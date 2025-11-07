@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+     "module": "NodeNext",       
+    "moduleResolution": "NodeNext", 
+     "typeRoots": ["./node_modules/@types", "./src/types"],  // 新增：指定类型根目录
+    "types": []  
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue","src/types/**/*.ts" ],
+  "references": [
+    { "path": "./tsconfig.node.json" }  // 确保路径正确
+  ]
+}

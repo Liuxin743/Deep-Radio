@@ -1,0 +1,20 @@
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "include": [
+    "vite.config.*",
+    "vitest.config.*",
+    "cypress.config.*",
+    "nightwatch.conf.*",
+    "playwright.config.*",
+    "eslint.config.*"
+  ],
+  "compilerOptions": {
+    "composite": true,  // 必须启用 composite 模式
+     "module": "NodeNext",       
+    "moduleResolution": "NodeNext", 
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": false,    // 确保不禁用输出（如果之前设为 true 则改为 false）
+    "jsx": "preserve"
+  },
+}
