@@ -47,8 +47,13 @@ const appStore = useAppStore();
   background-color: #0f172a;
   color: white;
 }
+.container{
+  padding: 1rem;
+  
+}
 
 .faq-item {
+  margin: 1rem 0;
   transition: all 0.3s ease;
 }
 

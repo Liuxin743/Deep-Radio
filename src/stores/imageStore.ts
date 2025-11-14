@@ -14,14 +14,14 @@ export const useImageStore = defineStore('image', () => {
   const apiStatusText = ref('GPT-image-1');
 
   // 风格选项
-  const styles: StyleOption[] = [
-    { name: '无风格', imageUrl: '../assets/None.png' },
-    { name: '吉卜力', imageUrl: '../assets/ghibli.png' },
-    { name: '拍立得', imageUrl: '../assets/polaraid.png' },
-    { name: '3D手办', imageUrl: '../assets/dFigure.png' },
-    { name: '乐高', imageUrl: '../assets/lego.png' },
-    { name: '皮克斯', imageUrl: '../assets/pixar.png' }
-  ];
+  // const styles: StyleOption[] = [
+  //   { name: '无风格', imageUrl: '../assets/None.png' },
+  //   { name: '吉卜力', imageUrl: '../assets/ghibli.png' },
+  //   { name: '拍立得', imageUrl: '../assets/polaraid.png' },
+  //   { name: '3D手办', imageUrl: '../assets/dFigure.png' },
+  //   { name: '乐高', imageUrl: '../assets/lego.png' },
+  //   { name: '皮克斯', imageUrl: '../assets/pixar.png' }
+  // ];
 
   // 方法
   const testApiConnection = async () => {
@@ -123,7 +123,7 @@ export const useImageStore = defineStore('image', () => {
     generatedImages,
     apiStatus,
     apiStatusText,
-    styles,
+    // styles,
     testApiConnection,
     handleImageUpload,
     selectStyle,

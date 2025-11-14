@@ -39,6 +39,7 @@ const appStore = useAppStore();
 
 <style scoped>
 #guide {
+  padding: 1rem ;
     padding-bottom: 7rem;
     margin: 0 auto;
   background-color: #0f172a;
@@ -52,7 +53,8 @@ const appStore = useAppStore();
   background-color: #1e293b;
   border: 1px solid #374151;
   border-radius: 0.75rem;
-  padding: 2rem;
+  padding: 1rem;
+  margin: 0.7rem;
   display: flex;
   gap: 1.5rem;
   transition: transform 0.3s ease, box-shadow 0.3s ease;

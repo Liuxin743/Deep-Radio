@@ -42,7 +42,8 @@
 }
 
 .container {
-  max-width: 1400px;
+  margin: 0 auto;
+  max-width: 1500px;
   text-align: center;
 }
 .popule-title{
@@ -56,7 +57,7 @@
 }
 
 .btn-primary {
-  background-color: #7e22ce;
+  background-color:  #7e22ce;
   color: white;
   border: none;
   border-radius: 0.375rem;

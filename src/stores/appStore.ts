@@ -2,10 +2,12 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { GuideStep, Feature, FaqItem } from '../types';
 
+
+
 export const useAppStore = defineStore('app', () => {
   // 状态
   const selectedLanguage = ref('zh');
-  
+
   // 导航步骤数据
   const guideSteps: GuideStep[] = [
     {

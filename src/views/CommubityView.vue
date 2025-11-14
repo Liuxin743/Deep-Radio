@@ -1,6 +1,6 @@
 <template>
   <section id="community" class="py-16 px-4">
-    <div class="container mx-auto max-w-5xl">
+     <div class="container">
       <!-- 页面标题区域 - 精确控制间距 -->
       <div class="text-center mb-10">
         <h2 class="text-[clamp(2rem,5vw,2.5rem)] font-bold mb-3">Deep Radio社区</h2>
@@ -10,7 +10,7 @@
       </div>
       
       <!-- 浏览更多按钮 - 居中对齐 -->
-      <div class="text-center mt-8">
+      <div class="text-left mt-8">
         <button class="btn-primary px-6 py-2.5">
           <i class="fa fa-image mr-2"></i> 浏览更多作品
         </button>
@@ -25,9 +25,15 @@
 
 <style scoped>
 #community {
+  max-width: 1400px;
+  margin: 0;
   background-color: #0f172a;
   color: white;
-  padding: 1rem;
+  /* padding: 1rem; */
+  padding: 1rem 1rem;
+}
+.container{
+  width: 100%;
 }
 
 /* 卡片整体样式 */
@@ -58,7 +64,7 @@
 
 /* 文本排版细节 */
 .leading-snug {
-  line-height: 1.3; /* 紧凑行高，匹配设计图提示词密度 */
+  line-height: 1.3;
 }
 
 .leading-relaxed {
