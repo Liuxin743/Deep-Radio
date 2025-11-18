@@ -21,7 +21,7 @@
       
       <div class="mt-12 text-center">
         <div class="click-style">
-            <router-link to="/generator" class="btn-primary inline-flex items-center">
+            <router-link to="/" class="btn-primary inline-flex items-center">
           <i class="fa fa-arrow-right mr-2"></i> 开始使用
         </router-link>
         </div>

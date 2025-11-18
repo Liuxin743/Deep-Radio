@@ -10,11 +10,14 @@
       
       <nav class="nav-links">
         <router-link to="/" class="nav-link">首页</router-link>
-        <router-link to="/community" class="nav-link">社区</router-link>
-        <router-link to="/data-center" class="nav-link">数据中心</router-link>
-        <router-link to="/generator" class="nav-link">生成</router-link>
-        <router-link to="/guide" class="nav-link">使用步骤</router-link>
-        <router-link to="/features" class="nav-link">产品优势</router-link>
+        <router-link to="/community" class="nav-link">AI通信社区</router-link>
+        <router-link to="/data-center" class="nav-link">数据集</router-link>
+        <router-link to="/generative-model" class="nav-link">生成模型</router-link>
+        <!-- <router-link to="/generator" class="nav-link">生成</router-link> -->
+        <!-- <router-link to="/guide" class="nav-link">使用步骤</router-link> -->
+        <router-link to="/news" class="nav-link">前沿动态</router-link>
+        <router-link to="/features" class="nav-link">关于我们</router-link>
+        <!-- <router-link to="/cooperation" class="nav-link">真正合作</router-link> -->
         <router-link to="/faq" class="nav-link">常见问题</router-link>
       </nav>
       
@@ -33,7 +36,9 @@
             <option value="de">DE Deutsch</option>
           </select>
         </div>
-        <button class="login-btn">登录</button>
+        <button class="login-btn">
+          <router-link to="/login" class="nav-link">登录</router-link>
+        </button>
       </div>
     </div>
   </header>
@@ -180,5 +185,13 @@ const handleLanguageChange = (e: Event) => {
 
 .login-btn:hover {
   background-color: rgba(126, 34, 206, 0.1);
+}
+.login-btn .nav-link {
+  color: inherit;
+  display: block;
+}
+
+.login-btn:hover .nav-link {
+  color: inherit;
 }
 </style>

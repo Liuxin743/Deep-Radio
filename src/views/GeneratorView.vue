@@ -65,11 +65,13 @@ const imageStore = useImageStore();
   padding: 2rem 0;
 }
 .right-column{
+
     
 
 }
 
 .card {
+  width: 90%;
   background-color: #1e293b;
   border: 1px solid #374151;
   border-radius: 0.75rem;

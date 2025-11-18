@@ -26,12 +26,16 @@
         </div>
       </div>
       
+      
       <div class="mt-12 text-center">
         <p class="text-gray-400 mb-4">还有其他问题？</p>
         <a href="mailto:support@viggleai.com" class="text-purple-light hover:underline">
           <i class="fa fa-envelope mr-2"></i> 联系客服
         </a>
       </div>
+      <router-link to="/cooperation" class="text-purple-light hover:underline mt-2 inline-block">
+           <i class="fa fa-group mr-2"></i>真正合作
+          </router-link>
     </div>
   </section>
 </template>

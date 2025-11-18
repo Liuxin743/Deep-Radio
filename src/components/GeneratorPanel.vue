@@ -17,25 +17,8 @@
         </select>
       </div>
 
-      <!-- 模型状态信息 -->
-      <!-- <div class="mt-2 bg-navDark/70 border border-navBorder rounded p-2 flex items-center justify-between text-sm">
-        <span class="flex items-center">
-          <i class="fa fa-circle text-green-500 mr-2 text-xs" v-if="currentModel.status === 'connected'"></i>
-          <i class="fa fa-spinner fa-spin mr-2 text-xs" v-if="currentModel.status === 'testing'"></i>
-          <i class="fa fa-circle text-red-500 mr-2 text-xs" v-if="currentModel.status === 'error'"></i>
-          {{ getStatusText(currentModel.status) }}
-        </span>
-        <button 
-          class="text-purple-light hover:text-purple" 
-          @click="testSelectedModelConnection"
-        >
-          测试连接
-        </button>
-      </div> -->
     </div>
 
-    <!-- 图片上传 -->
-    <!-- <label class="block text-sm text-gray-400 mb-2">上传参考图片</label> -->
     <div class="upload-container border-2 border-navBorder rounded-lg p-4 bg-navDark/50 mb-6">
       <div class="upload-area">
         <input
@@ -56,15 +39,6 @@
       </div>
     </div>
 
-    <!-- 提示词 -->
-    <!-- <div class="mb-6 prompt">
-      <label class="block text-sm text-gray-400 mb-2 prompt-size">提示词 </label>
-      <textarea
-        class="w-full bg-navDark border border-navBorder rounded p-3 text-white focus:outline-none focus:ring-1 focus:ring-purple prompt-item"
-        rows="2"
-        v-model="imageStore.promptText"
-      ></textarea>
-    </div> -->
 
     <!-- 输出数量 -->
     <div class="mb-6 quantity">
@@ -125,6 +99,8 @@
 <script setup lang="ts">
 import { useImageStore } from '@/stores/imageStore'
 import { ref, computed } from 'vue'
+
+
 
 const imageStore = useImageStore()
 

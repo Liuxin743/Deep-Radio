@@ -29,7 +29,7 @@
         <div v-if="history.length === 0" class="p-8 text-center text-gray-400">
           <i class="fa fa-history text-4xl mb-4"></i>
           <p>暂无生成记录</p>
-          <router-link to="/generator" class="text-purple-light hover:underline mt-2 inline-block">
+          <router-link to="/" class="text-purple-light hover:underline mt-2 inline-block">
             去生成第一张图片
           </router-link>
         </div>

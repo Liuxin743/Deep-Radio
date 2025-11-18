@@ -9,7 +9,7 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
-     "type-check": "echo \"跳过类型检查\"",
+    "type-check": "echo \"跳过类型检查\"",
     "lint": "eslint . --fix --cache",
     "format": "prettier --write src/",
     "predeploy": "npm run build",
@@ -19,8 +19,9 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "element-plus": "^2.11.7",
-    "pinia": "^3.0.3",
+    "pinia": "^3.0.4",
     "vue": "^3.5.22",
     "vue-i18n": "^9.14.5",
     "vue-router": "^4.6.3"
@@ -34,13 +35,13 @@
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^9.37.0",
     "eslint-plugin-vue": "~10.5.0",
+    "gh-pages": "^6.0.0",
     "jiti": "^2.6.1",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.6.2",
     "typescript": "~5.9.0",
     "vite": "^7.1.11",
     "vite-plugin-vue-devtools": "^8.0.3",
-    "vue-tsc": "^3.1.1",
-    "gh-pages": "^6.0.0"
+    "vue-tsc": "^3.1.1"
   }
 }
