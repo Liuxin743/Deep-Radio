@@ -282,6 +282,7 @@ header {
   backdrop-filter: blur(10px);
   color: white;
   padding: 20px 0;
+  /* padding: 20px 0;. */
   border-bottom: 1px solid #4a5568;
 }
 

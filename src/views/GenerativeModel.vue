@@ -1,25 +1,5 @@
 <template>
-  <div class="generative-model">
-    <!-- 页面头部 -->
-    <!-- <header class="model-header">
-      <div class="container">
-        <div class="header-content">
-          <div class="logo">
-            <div class="logo-icon">🎨</div>
-            <h1>AI生成模型</h1>
-          </div>
-          <div class="header-actions">
-            <button class="btn-secondary" @click="showHistory = !showHistory">
-              📚 生成历史
-            </button>
-            <button class="btn-primary" @click="exportProject">
-              💾 导出项目
-            </button>
-          </div>
-        </div>
-      </div>
-    </header> -->
-
+  <div class="generative-model-page">
     <div class="container">
       <div class="model-content">
         <!-- 左侧配置面板 -->
