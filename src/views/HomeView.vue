@@ -4,7 +4,7 @@
       <!-- 首页标题和描述 -->
       <div class="home-header">
         <h1 class="popule-title text-center mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple to-purple-light">
-          运用图像对图像AI改变您的照片
+          输入你感兴趣的位置地图，告诉您无线信号盲区
         </h1> 
         <!-- <p class="text-gray-400 text-center popule text-lg mb-10">
           轻松地使用我们的图像对图像AI生成器转换您的图像。上传照片，从多种艺术风格中选择，或创建您自己的自定义外观，让AI将您的想法变为现实。简单、快速且富有创意。现在就试试，开启无限可能！
@@ -68,7 +68,7 @@
           <div v-else class="no-tasks">
             <i class="fa fa-image text-gray-500 text-5xl mb-4"></i>
             <p class="text-gray-400">暂无生成记录</p>
-            <p class="text-gray-500 text-sm mt-2">使用上方的生成器创建您的第一张AI图像</p>
+            <p class="text-gray-500 text-sm mt-2">使用上方的生成器创建您的第一张无线电地图图像</p>
           </div>
         </div>
       </div>
@@ -123,7 +123,7 @@ const scrollToGenerator = () => {
   margin: 0 auto 2rem;
 }
 .guide{
-  margin: -2.5rem;
+  /* margin: -1rem; */
 }
 .btn-primary {
   background-color: #7e22ce;

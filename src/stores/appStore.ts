@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref ,reactive } from 'vue';
 import { GuideStep, Feature, FaqItem } from '../types';
 
 
@@ -11,16 +11,12 @@ export const useAppStore = defineStore('app', () => {
   // 导航步骤数据
   const guideSteps: GuideStep[] = [
     {
-      title: '上传您的图片',
-      description: '选择并上传您想要转换的源图片。我们的AI支持JPG、PNG和WEBP格式，文件大小最大10MB。'
-    },
-    {
-      title: '描述您的想法',
-      description: '提供详细的文字提示，描述您希望如何转换图片。具体说明所需的艺术风格、颜色变化或主题修改。'
+      title: '上传您的城市地图',
+      description: '选择并上传您想要转换的源图片。我们的AI支持PNG，文件格式为256x256。'
     },
     {
       title: '生成您的转化',
-      description: '点击生成按钮，观看我们的高级AI分析您的图片并应用您请求的更改。几秒钟内即可完成。'
+      description: '点击生成按钮，观看我们的大模型分析您的图片并应用您请求的更改。'
     },
     {
       title: '下载并分享',
@@ -53,7 +49,7 @@ export const useAppStore = defineStore('app', () => {
   ];
 
   // FAQ数据
-  const faqItems: FaqItem[] = [
+  const faqItems:FaqItem[]= [
     {
       question: '什么是图像到图像的人工智能技术？',
       answer: '图像到图像的人工智能技术是一种先进的AI系统，它能够根据输入的原始图像和文本提示，生成具有相似内容但风格、细节或构图不同的新图像。',
@@ -83,9 +79,8 @@ export const useAppStore = defineStore('app', () => {
 
   // 方法
   const toggleFaq = (index: number) => {
-    faqItems[index].active = !faqItems[index].active;
-  };
-
+  faqItems[index].active = !faqItems[index].active;
+};
   const changeLanguage = (lang: string) => {
     selectedLanguage.value = lang;
   };

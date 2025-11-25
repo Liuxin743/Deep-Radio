@@ -1,6 +1,6 @@
 <template>
   <div class="generator-panel">
-    <h2 class="text-3xl font-bold mb-6">图生图生成器</h2>
+    <h2 class="text-3xl font-bold mb-6">无线电地图生成器</h2>
 
     <!-- 模型选择（单选下拉框） -->
     <div class="mb-6">
@@ -11,12 +11,10 @@
           v-model="selectedModel"
         >
           <option :value="model.id" v-for="model in models" :key="model.id">
-            {{ model.name }}
-            <span class="model-status-indicator inline-block" :class="model.status"></span>
+            {{ model.name }} ({{ model.status === 'active' ? '可用' : '不可用' }})
           </option>
         </select>
       </div>
-
     </div>
 
     <div class="upload-container border-2 border-navBorder rounded-lg p-4 bg-navDark/50 mb-6">
@@ -33,12 +31,11 @@
           class="flex flex-col items-center justify-center w-full h-full cursor-pointer"
         >
           <i class="fa fa-upload text-purple-light text-3xl mb-2"></i>
-          <h3 class="text-lg font-medium mb-1">点击上传图片</h3>
+          <h3 class="text-lg font-medium mb-1">点击上传城市地图</h3>
           <p class="text-sm text-gray-400">Upload an image to transform</p>
         </label>
       </div>
     </div>
-
 
     <!-- 输出数量 -->
     <div class="mb-6 quantity">
@@ -65,11 +62,11 @@
       <span v-if="imageStore.isGenerating">生成中...</span>
       <span v-else>生成</span>
     </button>
-    <p class="text-xs text-gray-500 text-center mt-2 consume">每次生成消耗3积分</p>
+    <!-- <p class="text-xs text-gray-500 text-center mt-2 consume">每次生成消耗3积分</p> -->
 
     <!-- 最近任务区域 -->
     <div class="recent-tasks mt-8">
-      <h3 class="text-xl font-semibold mb-4">最近生成的图片</h3>
+      <h3 class="text-xl font-semibold mb-4">最近生成的无线电地图图片</h3>
       <div v-if="imageStore.generatedImages.length === 0" class="no-tasks">
         <p class="text-gray-400 text-center py-6">暂无生成记录</p>
       </div>
@@ -99,8 +96,6 @@
 <script setup lang="ts">
 import { useImageStore } from '@/stores/imageStore'
 import { ref, computed } from 'vue'
-
-
 
 const imageStore = useImageStore()
 
@@ -260,7 +255,6 @@ const downloadImage = (url: string) => {
   border-radius: 0.3rem;
   text-align: center;
   padding: 0.5rem 0;
-
 }
 
 /* 最近任务样式 */
