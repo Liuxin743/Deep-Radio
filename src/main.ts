@@ -5,7 +5,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-// import "font-awesome/css/font-awesome.css";
+import "font-awesome/css/font-awesome.css";
 // import 'font-awesome/css/font-awesome.min.css';
 // 详细的路由调试
 // router.beforeEach((to, from, next) => {
