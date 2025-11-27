@@ -1,597 +1,963 @@
 <template>
-  <section id="dataset-page" class="py-16 px-4 min-h-screen bg-slate-900 text-white">
-    <div class="container mx-auto max-w-6xl">
-      <!-- 页面标题 -->
-      <h2 class="text-4xl font-bold text-center mb-8 text-purple-400">
-        地理与信号数据集管理
-      </h2>
+  <div class="datasets-page">
+    <!-- 头部 -->
+    <div class="page-header">
+      <!-- <h1>Awesome Public Datasets</h1> -->
+      <p>高质量的主题中心公共数据源列表 - 所有链接均可点击访问</p>
+      <div class="header-actions">
+        <button class="btn-primary" @click="refreshData" :disabled="loading">
+          {{ loading ? '刷新中...' : '刷新数据' }}
+        </button>
+        <a href="https://github.com/awesomedata/apd-core" target="_blank" class="btn-secondary">
+          查看GitHub仓库
+        </a>
+      </div>
+    </div>
 
-      <!-- 操作栏 -->
-      <div class="bg-slate-800 rounded-lg p-5 mb-6 flex flex-wrap gap-4 justify-between items-center">
-        <div class="flex flex-wrap gap-4">
-          <div>
-            <label class="text-gray-300 mr-3">数据集类型：</label>
-            <select v-model="selectedDatasetType" @change="loadDataset" class="bg-slate-700 text-white px-4 py-2 rounded border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400">
-              <option value="osm_geo">OSM地理数据集（道路+建筑）</option>
-              <option value="signal_coverage">信号覆盖数据集</option>
-              <option value="signal_strength">信号强度数据集</option>
-              <option value="interference">干扰源分布数据集</option>
-            </select>
-          </div>
-          <button @click="exportCurrentDataset" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-600 rounded transition flex items-center gap-2">
-            <i class="fa fa-download"></i> 导出数据集
-          </button>
+    <!-- 主要内容 -->
+    <div class="main-content">
+      <!-- 左侧导航 -->
+      <div class="sidebar">
+        <div class="search-box">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="搜索数据集..." 
+            class="search-input"
+          >
         </div>
-        <div class="text-sm text-gray-400">
-          最后更新：<span class="text-purple-300">{{ lastUpdateTime }}</span>
+
+        <h3>📁 数据分类</h3>
+        <nav>
+          <ul>
+            <li v-for="category in filteredCategories" :key="category.name">
+              <a :href="'#' + getCategoryId(category.name)" 
+                 @click.prevent="scrollToCategory(category.name)"
+                 :class="{ active: activeCategory === category.name }">
+                {{ category.name }}
+                <span class="dataset-count">{{ category.datasets.length }}</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="quick-links">
+          <h4>🔗 热门数据源</h4>
+          <div class="link-item">
+            <a href="https://www.kaggle.com/datasets" target="_blank">Kaggle数据集</a>
+          </div>
+          <div class="link-item">
+            <a href="https://archive.ics.uci.edu/" target="_blank">UCI机器学习库</a>
+          </div>
+          <div class="link-item">
+            <a href="https://www.data.gov/" target="_blank">美国政府数据</a>
+          </div>
+          <div class="link-item">
+            <a href="https://snap.stanford.edu/data/" target="_blank">斯坦福网络数据</a>
+          </div>
+        </div>
+
+        <!-- 侧边栏统计信息 -->
+        <div class="sidebar-stats">
+          <div class="stat-item">
+            <span class="stat-label">数据类别:</span>
+            <span class="stat-value">{{ stats.totalCategories }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">数据集总数:</span>
+            <span class="stat-value">{{ stats.totalDatasets }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">可用数据集:</span>
+            <span class="stat-value">{{ stats.okCount }}</span>
+          </div>
         </div>
       </div>
 
-      <!-- 核心内容区：图表+详情 + 地图 -->
-      <div class="flex flex-col gap-6 mb-8">
-        <!-- 上半部分：图表+详情 -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- 左侧：双图表组合（占2/3） -->
-          <div class="lg:col-span-2 bg-slate-800 rounded-lg p-5">
-            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
-              <i class="fa fa-bar-chart text-purple-400"></i> 数据集可视化
-            </h3>
-            <!-- 图表容器：上下布局（添加固定宽高） -->
-            <div class="grid grid-rows-2 gap-4" style="height: 600px;">
-              <div ref="scatterChartContainer" class="w-full h-full rounded" style="width: 100%; height: 100%;"></div>
-              <div ref="statsChartContainer" class="w-full h-full rounded" style="width: 100%; height: 100%;"></div>
-            </div>
-          </div>
-
-          <!-- 右侧：数据详情 -->
-          <div class="bg-slate-800 rounded-lg p-5">
-            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
-              <i class="fa fa-info-circle text-purple-400"></i> 数据集详情
-            </h3>
-            <div class="space-y-4 text-gray-200">
-              <div class="p-3 bg-slate-700 rounded">
-                <p class="text-sm text-gray-400">数据集名称</p>
-                <p class="text-lg font-medium">{{ datasetDetail.name }}</p>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div class="p-3 bg-slate-700 rounded text-center">
-                  <p class="text-sm text-gray-400">数据点数</p>
-                  <p class="text-xl font-bold text-purple-300">{{ datasetDetail.pointCount }}</p>
-                </div>
-                <div class="p-3 bg-slate-700 rounded text-center">
-                  <p class="text-sm text-gray-400">数据量</p>
-                  <p class="text-xl font-bold text-purple-300">{{ datasetDetail.size }}</p>
-                </div>
-              </div>
-              <div class="p-3 bg-slate-700 rounded">
-                <p class="text-sm text-gray-400">采集区域</p>
-                <p class="font-medium">{{ datasetDetail.area }}</p>
-              </div>
-              <div class="p-3 bg-slate-700 rounded">
-                <p class="text-sm text-gray-400">数据描述</p>
-                <p class="text-gray-300 text-sm leading-relaxed">{{ datasetDetail.description }}</p>
-              </div>
-              <!-- 核心指标卡片 -->
-              <div class="p-3 bg-purple-900/30 rounded border border-purple-500/30">
-                <p class="text-sm text-gray-300">核心指标</p>
-                <p class="text-2xl font-bold text-purple-300">{{ coreIndicator.value }}</p>
-                <p class="text-xs text-purple-200">{{ coreIndicator.label }}</p>
-              </div>
-            </div>
-          </div>
+      <!-- 右侧内容 -->
+      <div class="content">
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-state">
+          <div class="spinner"></div>
+          <p>正在加载数据集信息...</p>
         </div>
 
-        <!-- 下半部分：地图展示（修复宽高问题） -->
-        <div class="bg-slate-800 rounded-lg p-5">
-          <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
-            <i class="fa fa-map-marker text-purple-400"></i> 地理分布地图
-          </h3>
-          <!-- 地图容器：强制设置固定宽高，确保初始化时有尺寸 -->
-          <div class="relative w-full rounded overflow-hidden border border-slate-700/30" style="height: 500px; width: 100%;">
-            <div ref="mapContainer" style="width: 100%; height: 100%;"></div>
-            <!-- 自定义版权声明 -->
-            <div class="custom-osm-attribution">
-              © OSM OpenStreetMap contributors
-            </div>
+        <!-- 错误状态 -->
+        <div v-else-if="error" class="error-state">
+          <h3>⚠️ 加载失败</h3>
+          <p>{{ error }}</p>
+          <button @click="refreshData" class="retry-btn">🔄 重新加载</button>
+        </div>
+
+        <!-- 搜索提示 -->
+        <div v-else-if="searchQuery && filteredDatasets.length === 0" class="no-results">
+          <h3>🔍 未找到匹配的数据集</h3>
+          <p>尝试使用其他关键词搜索，或 <a @click="clearSearch" class="clear-link">清除搜索</a></p>
+        </div>
+
+        <!-- 数据内容 -->
+        <div v-else class="datasets-content">
+
+          <!-- 搜索结果显示 -->
+          <div v-if="searchQuery" class="search-results-header">
+            <h3>搜索结果 ({{ filteredDatasets.length }}个数据集)</h3>
+            <button @click="clearSearch" class="clear-search-btn">清除搜索</button>
           </div>
+
+          <!-- 数据集分类 -->
+          <template v-if="!searchQuery">
+            <section v-for="category in categories" :key="category.name" 
+                     :id="getCategoryId(category.name)" class="category-section">
+              <h2 class="category-title">
+                <span class="category-icon">📂</span>
+                {{ category.name }}
+                <span class="category-count">({{ category.datasets.length }}个数据集)</span>
+              </h2>
+              
+              <div class="datasets-grid">
+                <div v-for="dataset in category.datasets" :key="dataset.name" class="dataset-card">
+                  <div class="dataset-header">
+                    <span class="status-badge" :class="dataset.status.toLowerCase()">
+                      {{ dataset.status }}
+                    </span>
+                    <h3 class="dataset-name">
+                      <a :href="dataset.link" target="_blank" class="dataset-link" @click="trackClick(dataset.name)">
+                        {{ dataset.name }}
+                        <span class="external-icon">↗</span>
+                      </a>
+                    </h3>
+                  </div>
+                  
+                  <p class="dataset-description">{{ dataset.description }}</p>
+                  
+                  <div class="dataset-footer">
+                    <div class="dataset-meta">
+                      <span class="source-label">来源:</span>
+                      <span class="source-name">{{ dataset.source }}</span>
+                    </div>
+                    <div class="dataset-actions">
+                      <a :href="dataset.link" target="_blank" class="visit-btn" @click="trackClick(dataset.name)">
+                        访问数据源
+                        <span class="btn-icon">→</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </template>
+
+          <!-- 搜索结果显示 -->
+          <template v-else>
+            <section class="search-results-section">
+              <div class="datasets-grid">
+                <div v-for="dataset in filteredDatasets" :key="dataset.name + dataset.category" class="dataset-card">
+                  <div class="dataset-header">
+                    <span class="status-badge" :class="dataset.status.toLowerCase()">
+                      {{ dataset.status }}
+                    </span>
+                    <div class="dataset-category-tag">
+                      {{ dataset.category }}
+                    </div>
+                  </div>
+                  
+                  <h3 class="dataset-name">
+                    <a :href="dataset.link" target="_blank" class="dataset-link" @click="trackClick(dataset.name)">
+                      {{ dataset.name }}
+                      <span class="external-icon">↗</span>
+                    </a>
+                  </h3>
+                  
+                  <p class="dataset-description">{{ dataset.description }}</p>
+                  
+                  <div class="dataset-footer">
+                    <div class="dataset-meta">
+                      <span class="source-label">来源:</span>
+                      <span class="source-name">{{ dataset.source }}</span>
+                    </div>
+                    <a :href="dataset.link" target="_blank" class="visit-btn" @click="trackClick(dataset.name)">
+                      立即访问
+                      <span class="btn-icon">→</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </template>
         </div>
       </div>
     </div>
-  </section>
+
+    <!-- 页脚 -->
+    <div class="page-footer">
+      <div class="footer-content">
+        <p>
+          <strong>数据来源:</strong> 
+          <a href="https://github.com/awesomedata/apd-core" target="_blank">
+            Awesome Public Datasets
+          </a>
+          | <strong>最后更新:</strong> {{ lastUpdated }}
+          | <strong>数据集总数:</strong> {{ stats.totalDatasets }}
+        </p>
+        <p class="footer-note">
+          所有链接均为真实可访问的数据源，点击即可直接查看和下载数据
+        </p>
+      </div>
+    </div>
+  </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, watchEffect } from 'vue';
-import * as echarts from 'echarts';
-// 导入OpenLayers地图依赖
-import Map from 'ol/Map';
-import View from 'ol/View';
-import TileLayer from 'ol/layer/Tile';
-import OSM from 'ol/source/OSM';
-import { Vector as VectorLayer } from 'ol/layer';
-import { Vector as VectorSource } from 'ol/source';
-import Feature from 'ol/Feature';
-import Point from 'ol/geom/Point';
-import { Style, Fill, Stroke, Circle } from 'ol/style';
-import { fromLonLat } from 'ol/proj';
-import { defaults as defaultControls } from 'ol/control';
-
-// 状态管理
-const selectedDatasetType = ref('osm_geo');
-const lastUpdateTime = ref('2025-11-20 16:30:00');
-const scatterChartContainer = ref<HTMLDivElement | null>(null);
-const statsChartContainer = ref<HTMLDivElement | null>(null);
-const mapContainer = ref<HTMLDivElement | null>(null); // 地图容器ref
-let scatterChart: echarts.ECharts | null = null;
-let statsChart: echarts.ECharts | null = null;
-let map: Map | null = null; // 地图实例
-let dataVectorLayer: VectorLayer<VectorSource<Feature>> | null = null; // 数据矢量层
-
-// 数据集详情（不变）
-const datasetDetail = ref({
-  name: 'OSM地理数据集（道路+建筑）',
-  pointCount: 8817,
-  size: '5.88MB',
-  area: '湖南岳阳核心区（经纬度：112.83-112.95, 28.16-28.26）',
-  description: '包含区域内所有道路和建筑的地理坐标数据，道路3601条，建筑5216栋，数据来源于OSM OpenStreetMap开源项目。'
-});
-
-// 核心指标（不变）
-const coreIndicator = ref({
-  value: '52.16%',
-  label: '道路占比（总地理要素）'
-});
-
-// 模拟数据集（不变）
-const mockDatasets = {
-  osm_geo: {
-    detail: {
-      name: 'OSM地理数据集（道路+建筑）',
-      pointCount: 8817,
-      size: '5.88MB',
-      area: '湖南岳阳核心区（经纬度：112.83-112.95, 28.16-28.26）',
-      description: '包含区域内所有道路和建筑的地理坐标数据，道路3601条，建筑5216栋，数据来源于OSM OpenStreetMap开源项目。'
-    },
-    data: Array.from({ length: 200 }, (_, i) => ({
-      lon: 112.83 + Math.random() * 0.12,
-      lat: 28.16 + Math.random() * 0.10,
-      value: Math.floor(Math.random() * 2), // 0=建筑，1=道路
-      type: Math.random() > 0.5 ? '道路' : '建筑'
-    })),
-    coreIndicator: { value: '52.16%', label: '道路占比（总地理要素）' }
-  },
-  signal_coverage: {
-    detail: {
-      name: '信号覆盖数据集',
-      pointCount: 5280,
-      size: '8.2MB',
-      area: '湖南岳阳核心区（经纬度：112.83-112.95, 28.16-28.26）',
-      description: '区域内无线信号覆盖度数据，覆盖度范围0-100，数值越高表示信号覆盖越好。'
-    },
-    data: Array.from({ length: 200 }, (_, i) => ({
-      lon: 112.83 + Math.random() * 0.12,
-      lat: 28.16 + Math.random() * 0.10,
-      value: 60 + Math.random() * 40,
-      type: '信号覆盖'
-    })),
-    coreIndicator: { value: '89.7', label: '平均覆盖度（0-100）' }
-  },
-  signal_strength: {
-    detail: {
-      name: '信号强度数据集',
-      pointCount: 3620,
-      size: '5.9MB',
-      area: '湖南岳阳核心区（经纬度：112.83-112.95, 28.16-28.26）',
-      description: '区域内无线信号强度数据，单位dBm，数值越接近0表示信号越强。'
-    },
-    data: Array.from({ length: 200 }, (_, i) => ({
-      lon: 112.83 + Math.random() * 0.12,
-      lat: 28.16 + Math.random() * 0.10,
-      value: -70 + Math.random() * 30,
-      type: '信号强度'
-    })),
-    coreIndicator: { value: '-52.3 dBm', label: '平均信号强度' }
-  },
-  interference: {
-    detail: {
-      name: '干扰源分布数据集',
-      pointCount: 1250,
-      size: '2.1MB',
-      area: '湖南岳阳核心区（经纬度：112.83-112.95, 28.16-28.26）',
-      description: '区域内无线信号干扰源分布数据，干扰强度等级10-50，数值越高表示干扰越严重。'
-    },
-    data: Array.from({ length: 200 }, (_, i) => ({
-      lon: 112.83 + Math.random() * 0.12,
-      lat: 28.16 + Math.random() * 0.10,
-      value: 10 + Math.random() * 40,
-      type: '干扰源'
-    })),
-    coreIndicator: { value: '27.8', label: '平均干扰强度（10-50）' }
-  }
-};
-
-// 计算数值分布区间（不变）
-const getValueRanges = (data: any[], type: string) => {
-  const values = data.map(item => item.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const step = type === 'signal_strength' ? 10 : 20;
-  const ranges: string[] = [];
-  const counts: number[] = [];
-
-  for (let i = Math.floor(min / step) * step; i <= Math.ceil(max / step) * step; i += step) {
-    const end = i + step;
-    ranges.push(type === 'signal_strength' ? `${i}~${end} dBm` : `${i}~${end}`);
-    counts.push(data.filter(item => item.value >= i && item.value < end).length);
-  }
-
-  return { ranges, counts };
-};
-
-// 安全初始化ECharts（不变）
-const safeInitChart = (container: HTMLDivElement | null, initFn: (dom: HTMLDivElement) => echarts.ECharts | null) => {
-  if (!container) return null;
-  if (container.clientWidth === 0 || container.clientHeight === 0) {
-    return new Promise<echarts.ECharts | null>((resolve) => {
-      setTimeout(() => resolve(safeInitChart(container, initFn)), 100);
-    });
-  }
-  return Promise.resolve(initFn(container));
-};
-
-// 初始化地理散点图（不变）
-const initScatterChart = (data: any[]) => {
-  const initFn = (dom: HTMLDivElement) => {
-    if (scatterChart) scatterChart.dispose();
-    const chart = echarts.init(dom);
-    const lons = data.map(item => item.lon);
-    const lats = data.map(item => item.lat);
-    const [minLon, maxLon] = [Math.min(...lons), Math.max(...lons)];
-    const [minLat, maxLat] = [Math.min(...lats), Math.max(...lats)];
-
-    const option: echarts.EChartsOption = {
-      backgroundColor: '#1e293b',
-      title: { text: '地理空间分布', left: 'center', textStyle: { color: '#e2e8f0', fontSize: 14 } },
-      tooltip: {
-        trigger: 'item',
-        formatter: (params: any) => `
-          经度：${params.data.lon.toFixed(6)}<br/>
-          纬度：${params.data.lat.toFixed(6)}<br/>
-          类型：${params.data.type}<br/>
-          数值：${params.data.value}
-        `,
-        backgroundColor: '#1a2435', borderColor: '#374151', textStyle: { color: '#e2e8f0' }
-      },
-      xAxis: {
-        type: 'value', name: '经度', nameTextStyle: { color: '#e2e8f0' },
-        axisLine: { lineStyle: { color: '#374151' } }, axisLabel: { color: '#e2e8f0' },
-        splitLine: { lineStyle: { color: '#2d3748' } }, min: minLon - 0.01, max: maxLon + 0.01
-      },
-      yAxis: {
-        type: 'value', name: '纬度', nameTextStyle: { color: '#e2e8f0' },
-        axisLine: { lineStyle: { color: '#374151' } }, axisLabel: { color: '#e2e8f0' },
-        splitLine: { lineStyle: { color: '#2d3748' } }, min: minLat - 0.01, max: maxLat + 0.01
-      },
-      visualMap: {
-        min: Math.min(...data.map(item => item.value)), max: Math.max(...data.map(item => item.value)),
-        left: 'left', top: 'bottom', text: ['高', '低'], textStyle: { color: '#e2e8f0' },
-        calculable: true, inRange: { color: ['#4361ee', '#7209b7', '#f72585'] }
-      },
-      series: [{
-        name: '数据分布', type: 'scatter', data: data, symbolSize: 12,
-        emphasis: { itemStyle: { shadowBlur: 15, shadowColor: 'rgba(168, 85, 247, 0.6)' } }
-      }]
-    };
-
-    chart.setOption(option);
-    return chart;
-  };
-
-  safeInitChart(scatterChartContainer.value, initFn).then(chart => {
-    scatterChart = chart;
-  });
-};
-
-// 初始化统计图表（不变）
-const initStatsChart = (data: any[], type: string) => {
-  const initFn = (dom: HTMLDivElement) => {
-    if (statsChart) statsChart.dispose();
-    const chart = echarts.init(dom);
-    let option: echarts.EChartsOption = {};
-
-    if (type === 'osm_geo') {
-      const roadCount = data.filter(item => item.type === '道路').length;
-      const buildingCount = data.filter(item => item.type === '建筑').length;
-      option = {
-        backgroundColor: '#1e293b', title: { text: '道路/建筑占比', left: 'center', textStyle: { color: '#e2e8f0', fontSize: 14 } },
-        tooltip: { trigger: 'item', backgroundColor: '#1a2435', borderColor: '#374151', textStyle: { color: '#e2e8f0' } },
-        series: [{
-          name: '要素类型', type: 'pie', radius: ['40%', '70%'], center: ['50%', '50%'],
-          data: [
-            { value: roadCount, name: '道路', itemStyle: { color: '#4361ee' } },
-            { value: buildingCount, name: '建筑', itemStyle: { color: '#f72585' } }
-          ],
-          label: { color: '#e2e8f0', formatter: '{b}: {d}%' },
-          itemStyle: { borderColor: '#1e293b', borderWidth: 2 },
-          labelLine: { lineStyle: { color: '#94a3b8' } }
-        }]
-      };
-    } else {
-      const { ranges, counts } = getValueRanges(data, type);
-      option = {
-        backgroundColor: '#1e293b', title: { text: `${datasetDetail.value.name} 数值分布`, left: 'center', textStyle: { color: '#e2e8f0', fontSize: 14 } },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: '#1a2435', borderColor: '#374151', textStyle: { color: '#e2e8f0' } },
-        xAxis: {
-          type: 'category', data: ranges, axisLine: { lineStyle: { color: '#374151' } },
-          axisLabel: { color: '#e2e8f0', rotate: 30 }
-        },
-        yAxis: {
-          type: 'value', name: '数据点数', nameTextStyle: { color: '#e2e8f0' },
-          axisLine: { lineStyle: { color: '#374151' } }, axisLabel: { color: '#e2e8f0' },
-          splitLine: { lineStyle: { color: '#2d3748' } }
-        },
-        series: [{
-          name: '数据分布', type: 'bar', data: counts, itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#7209b7' }, { offset: 1, color: '#f72585' }
-            ])
-          },
-          barWidth: '60%',
-          emphasis: { itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#4361ee' }, { offset: 1, color: '#7209b7' }
-            ])
-          } }
-        }]
-      };
+<script>
+export default {
+  name: 'DatasetsPage',
+  data() {
+    return {
+      loading: false,
+      error: null,
+      categories: [],
+      lastUpdated: '-',
+      searchQuery: '',
+      activeCategory: '',
+      apiBaseUrl: 'http://localhost:5002/api',
+      clickCount: 0
     }
+  },
+  computed: {
+    stats() {
+      const totalDatasets = this.categories.reduce((sum, category) => 
+        sum + category.datasets.length, 0
+      );
+      const okCount = this.categories.reduce((sum, category) => 
+        sum + category.datasets.filter(d => d.status === 'OK').length, 0
+      );
 
-    chart.setOption(option);
-    return chart;
-  };
-
-  safeInitChart(statsChartContainer.value, initFn).then(chart => {
-    statsChart = chart;
-  });
-};
-
-// 修复：初始化地图（确保容器有宽高后再创建）
-const initMap = (data: any[]) => {
-  // 使用watchEffect监听容器，确保有宽高后再初始化
-  watchEffect(() => {
-    if (!mapContainer.value) return;
-
-    // 强制获取容器宽高，触发渲染
-    const container = mapContainer.value;
-    const width = container.offsetWidth;
-    const height = container.offsetHeight;
-
-    // 只有宽高都大于0时才初始化地图
-    if (width > 0 && height > 0) {
-      // 销毁已有地图实例
-      if (map) map.dispose();
-
-      // 创建地图（禁用默认版权控件）
-      map = new Map({
-        target: container,
-        controls: defaultControls({ attribution: false }),
-        layers: [new TileLayer({ source: new OSM() })],
-        view: new View({
-          center: fromLonLat([112.89, 28.21]), // 岳阳核心区
-          zoom: 14
-        })
-      });
-
-      // 创建数据矢量层
-      const vectorSource = new VectorSource();
-      dataVectorLayer = new VectorLayer({ source: vectorSource });
-      map.addLayer(dataVectorLayer);
-
-      // 添加数据点
-      updateMapData(data);
-
-      // 初始化完成后停止监听
-      watchEffect.onInvalidate(() => {});
-    }
-  });
-};
-
-// 更新地图数据（不变）
-const updateMapData = (data: any[]) => {
-  if (!dataVectorLayer) return;
-  const source = dataVectorLayer.getSource();
-  if (!source) return;
-
-  source.clear();
-  data.forEach(item => {
-    const coordinates = fromLonLat([item.lon, item.lat]);
-    const feature = new Feature({ geometry: new Point(coordinates) });
-    let style: Style;
-
-    if (selectedDatasetType.value === 'osm_geo') {
-      const color = item.type === '道路' ? '#4361ee' : '#f72585';
-      style = new Style({
-        image: new Circle({ radius: 6, fill: new Fill({ color }), stroke: new Stroke({ color: '#fff', width: 1 }) })
-      });
-    } else {
-      const color = item.value > 80 ? '#f72585' : item.value > 50 ? '#7209b7' : '#4361ee';
-      style = new Style({
-        image: new Circle({ radius: 8, fill: new Fill({ color }), stroke: new Stroke({ color: '#fff', width: 1 }) })
-      });
-    }
-
-    feature.setStyle(style);
-    source.addFeature(feature);
-  });
-};
-
-// 加载选中的数据集（修改：确保地图数据更新）
-const loadDataset = () => {
-  const dataset = mockDatasets[selectedDatasetType.value as keyof typeof mockDatasets];
-  datasetDetail.value = dataset.detail;
-  coreIndicator.value = dataset.coreIndicator;
-  
-  nextTick(() => {
-    initScatterChart(dataset.data);
-    initStatsChart(dataset.data, selectedDatasetType.value);
-    // 延迟更新地图，确保DOM稳定
-    setTimeout(() => {
-      if (dataVectorLayer) {
-        updateMapData(dataset.data);
-      } else {
-        initMap(dataset.data); // 若地图未初始化，重新初始化
+      return {
+        totalCategories: this.categories.length,
+        totalDatasets: totalDatasets,
+        okCount: okCount,
+        lastUpdated: this.lastUpdated ? new Date(this.lastUpdated).toLocaleDateString() : '-'
       }
-    }, 300);
-  });
-};
-
-// 导出当前数据集（不变）
-const exportCurrentDataset = () => {
-  const dataset = mockDatasets[selectedDatasetType.value as keyof typeof mockDatasets];
-  const blob = new Blob([JSON.stringify(dataset, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${dataset.detail.name}_${new Date().getTime()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-// 窗口resize适配（修改：增强地图自适应）
-const handleResize = () => {
-  setTimeout(() => {
-    scatterChart?.resize();
-    statsChart?.resize();
-    // 地图自适应时强制刷新尺寸
-    if (map && mapContainer.value) {
-      const container = mapContainer.value;
-      map.setSize([container.offsetWidth, container.offsetHeight]);
-      map.updateSize();
+    },
+    filteredCategories() {
+      if (!this.searchQuery) return this.categories;
+      
+      return this.categories.filter(category => 
+        category.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        category.datasets.some(dataset => 
+          dataset.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+          dataset.description.toLowerCase().includes(this.searchQuery.toLowerCase())
+        )
+      );
+    },
+    filteredDatasets() {
+      if (!this.searchQuery) return [];
+      
+      const results = [];
+      this.categories.forEach(category => {
+        category.datasets.forEach(dataset => {
+          if (dataset.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+              dataset.description.toLowerCase().includes(this.searchQuery.toLowerCase())) {
+            results.push({
+              ...dataset,
+              category: category.name
+            });
+          }
+        });
+      });
+      return results;
     }
-  }, 100);
-};
-
-// 生命周期（修改：确保地图初始化时机正确）
-onMounted(() => {
-  const defaultDataset = mockDatasets[selectedDatasetType.value as keyof typeof mockDatasets];
-  datasetDetail.value = defaultDataset.detail;
-  coreIndicator.value = defaultDataset.coreIndicator;
-  
-  // 双重保障：nextTick + 延迟，确保DOM完全渲染
-  nextTick(() => {
-    setTimeout(() => {
-      initScatterChart(defaultDataset.data);
-      initStatsChart(defaultDataset.data, selectedDatasetType.value);
-      // 初始化地图（此时容器已渲染完成，有宽高）
-      initMap(defaultDataset.data);
-    }, 300); // 延长延迟，确保容器渲染
-  });
-
-  window.addEventListener('resize', handleResize);
-});
-
-// 组件卸载时清理（不变）
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
-  scatterChart?.dispose();
-  statsChart?.dispose();
-  map?.dispose();
-});
+  },
+  mounted() {
+    this.loadData();
+    this.setupIntersectionObserver();
+  },
+  methods: {
+    async loadData() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await fetch(`${this.apiBaseUrl}/datasets`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP错误: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result && result.success) {
+          this.categories = result.data.categories || [];
+          this.lastUpdated = result.data.last_updated || '-';
+        } else {
+          this.error = result?.error || '加载数据失败';
+        }
+      } catch (err) {
+        this.error = `网络错误: ${err.message}`;
+      } finally {
+        this.loading = false;
+      }
+    },
+    
+    async refreshData() {
+      await this.loadData();
+    },
+    
+    getCategoryId(categoryName) {
+      return categoryName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    },
+    
+    scrollToCategory(categoryName) {
+      this.activeCategory = categoryName;
+      const element = document.getElementById(this.getCategoryId(categoryName));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    },
+    
+    setupIntersectionObserver() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            this.activeCategory = entry.target.id.replace(/-/g, ' ');
+          }
+        });
+      }, { threshold: 0.5 });
+      
+      this.$nextTick(() => {
+        this.categories.forEach(category => {
+          const element = document.getElementById(this.getCategoryId(category.name));
+          if (element) {
+            observer.observe(element);
+          }
+        });
+      });
+    },
+    
+    trackClick(datasetName) {
+      this.clickCount++;
+      console.log(`点击数据集: ${datasetName}, 总点击次数: ${this.clickCount}`);
+    },
+    
+    clearSearch() {
+      this.searchQuery = '';
+    }
+  }
+}
 </script>
 
 <style scoped>
-#dataset-page {
-  background-color: #0f172a;
-  overflow-x: hidden;
+.datasets-page {
+  max-width: 1350px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
 }
 
-/* 确保父容器有高度，子容器继承 */
-.grid-rows-2 {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  height: 100%;
+/* 头部样式 */
+.page-header {
+  /* background: linear-gradient(335deg, #8d9bda 0%, #764ba2 100%); */
+  color: white;
+  padding: 20px 0;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  text-align: center;
 }
 
-/* 地图版权声明样式 */
-.custom-osm-attribution {
-  position: absolute !important;
-  bottom: 10px !important;
-  right: 10px !important;
-  background: rgba(15, 23, 42, 0.9) !important;
-  color: #e2e8f0 !important;
-  padding: 4px 10px !important;
-  border-radius: 6px !important;
-  font-size: 11px !important;
-  line-height: 1.4 !important;
-  border: 1px solid rgba(168, 85, 247, 0.4) !important;
-  z-index: 100 !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+.page-header h1 {
+  margin-bottom: 10px;
+  font-size: 2.5rem;
+  font-weight: 700;
 }
 
-/* 地图基础样式（不变） */
-:deep(.ol-map) {
-  width: 100% !important;
-  height: 100% !important;
+.page-header p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin-bottom: 25px;
 }
 
-:deep(.ol-control) {
-  filter: invert(1) brightness(0.8);
-  border-radius: 6px !important;
-  margin: 8px !important;
+.header-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
-:deep(.ol-zoom) {
-  background: rgba(15, 23, 42, 0.8) !important;
-  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+/* 按钮样式 */
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
 }
 
-/* 响应式适配（不变） */
-@media (max-width: 1024px) {
-  .grid-cols-3 {
-    grid-template-columns: 1fr !important;
-  }
-  .grid-rows-2 {
-    height: 800px !important;
-  }
-  .custom-osm-attribution {
-    font-size: 10px !important;
-    padding: 3px 8px !important;
-  }
+.btn-primary {
+  background: #fff;
+  color: #7e22ce;
 }
 
-@media (max-width: 768px) {
-  .grid-rows-2 {
-    height: 600px !important;
-  }
-  h2 {
-    font-size: 2.5rem !important;
-  }
-  .custom-osm-attribution {
-    font-size: 9px !important;
-    padding: 2px 6px !important;
-  }
-}
-
-/* 按钮hover效果优化 */
-button:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* ECharts容器样式 */
-:deep(.echarts-container) {
-  border-radius: 0.5rem;
-  overflow: hidden;
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-/* 确保容器不会被压缩（增强） */
-div[ref="scatterChartContainer"],
-div[ref="statsChartContainer"],
-div[ref="mapContainer"] {
-  min-width: 300px !important;
-  min-height: 200px !important;
-  width: 100% !important;
-  height: 100% !important;
+.btn-secondary {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* 主要内容布局 */
+.main-content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 8px;
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+}
+
+.sidebar h3 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+}
+
+/* 搜索框 */
+.search-box {
+  margin-bottom: 25px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #7e22ce;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* 导航 */
+.sidebar nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 30px 0;
+}
+
+.sidebar nav li {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar nav a {
+  color: #495057;
+  text-decoration: none;
+  flex: 1;
+  padding: 8px 0;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.sidebar nav a:hover {
+  color: #7e22ce;
+  border-bottom-color: #7e22ce;
+}
+
+.sidebar nav a.active {
+  color: #7e22ce;
+  font-weight: 600;
+  border-bottom-color: #7e22ce;
+}
+
+.dataset-count {
+  background: #e9ecef;
+  color: #6c757d;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+/* 快速链接 */
+.quick-links {
+  margin-bottom: 25px;
+}
+
+.quick-links h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.link-item {
+  margin-bottom: 8px;
+}
+
+.link-item a {
+  color: #495057;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
+}
+
+.link-item a:hover {
+  color: #7e22ce;
+}
+
+/* 侧边栏统计信息 */
+.sidebar-stats {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e9ecef;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.stat-label {
+  color: #6c757d;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #2c3e50;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* 内容区域 */
+.content-section {
+  margin-bottom: 40px;
+}
+
+/* 介绍部分 */
+.intro-section {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.intro-section h2 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+}
+
+.intro-content p {
+  margin-bottom: 15px;
+  color: #495057;
+  font-size: 1.1rem;
+}
+
+/* 特性网格 */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.feature-icon {
+  font-size: 1.5rem;
+}
+
+.feature-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-text strong {
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.feature-text span {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* 分类区域 */
+.category-section {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.category-title {
+  color: #2c3e50;
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+  /* border-bottom: 2px solid #7e22ce; */
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-icon {
+  font-size: 1.5rem;
+}
+
+.category-count {
+  font-size: 1rem;
+  color: #6c757d;
+  font-weight: normal;
+}
+
+/* 数据集网格 */
+.datasets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+/* 数据集卡片 */
+.dataset-card {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 8px;
+  border-left: 4px solid #7e22ce;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+}
+
+.dataset-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dataset-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+/* 状态徽章 */
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.status-badge.ok {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.fixme {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.dataset-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.dataset-link {
+  color: #2c3e50;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dataset-link:hover {
+  color: #7e22ce;
+}
+
+.external-icon {
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.dataset-description {
+  color: #495057;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.dataset-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.dataset-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.source-label {
+  color: #6c757d;
+}
+
+.source-name {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.visit-btn {
+  background: #a855f7;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.visit-btn:hover {
+  background: #7e22ce;
+  transform: translateY(-1px);
+}
+
+.btn-icon {
+  font-size: 0.9em;
+}
+
+/* 搜索相关样式 */
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.search-results-header h3 {
+  color: #2c3e50;
+  margin: 0;
+}
+
+.clear-search-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.clear-search-btn:hover {
+  background: #545b62;
+}
+
+.dataset-category-tag {
+  background: #e9ecef;
+  color: #495057;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* 状态样式 */
+.loading-state, .error-state, .no-results {
+  text-align: center;
+  padding: 60px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.loading-state {
+  color: #6c757d;
+}
+
+.error-state {
+  color: #dc3545;
+  background: #f8d7da;
+}
+
+.no-results {
+  color: #6c757d;
+}
+
+.retry-btn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: #c82333;
+}
+
+.clear-link {
+  color: #667eea;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.clear-link:hover {
+  text-decoration: underline;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #7e22ce;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 2s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 页脚 */
+.page-footer {
+  text-align: center;
+  padding: 25px;
+  color: #6c757d;
+  border-top: 1px solid #dee2e6;
+  margin-top: 50px;
+}
+
+.footer-content p {
+  margin-bottom: 8px;
+}
+
+.footer-note {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.page-footer a {
+  color: #7e22ce;
+  text-decoration: none;
+}
+
+.page-footer a:hover {
+  text-decoration: underline;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    position: static;
+    margin-bottom: 20px;
+  }
+  
+  .datasets-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dataset-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .dataset-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .search-results-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .page-header {
+    padding: 30px 20px;
+  }
+  
+  .page-header h1 {
+    font-size: 2rem;
+  }
 }
 </style>
