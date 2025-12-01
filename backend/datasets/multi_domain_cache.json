@@ -1,0 +1,306 @@
+{
+  "categories": [
+    {
+      "name": "ComputerNetworks",
+      "datasets": [
+        {
+          "name": "CommonCrawl Web Data",
+          "description": "超过7年的网页爬取数据，包含数十亿网页",
+          "status": "OK",
+          "source": "Common Crawl",
+          "link": "https://commoncrawl.org/the-data",
+          "size": "300TB+",
+          "update_frequency": "Monthly",
+          "format": "WARC, WAT, WET"
+        },
+        {
+          "name": "ClueWeb12",
+          "description": "包含7.33亿网页的大规模网络数据集",
+          "status": "OK",
+          "source": "Lemur Project",
+          "link": "https://lemurproject.org/clueweb12/",
+          "size": "5TB",
+          "period": "2012"
+        },
+        {
+          "name": "Internet-Wide Scan Data",
+          "description": "全网扫描数据仓库，包含端口扫描和协议分析",
+          "status": "OK",
+          "source": "Rapid7",
+          "link": "https://www.rapid7.com/research/opendata/",
+          "data_types": [
+            "Port scans",
+            "SSL certificates",
+            "HTTP headers"
+          ]
+        },
+        {
+          "name": "MIRAGE-2019",
+          "description": "用于移动流量分析的人工生成数据集",
+          "status": "OK",
+          "source": "Research Community",
+          "link": "https://ieee-dataport.org/open-access/mirage-2019-mobile-traffic-analysis-dataset"
+        }
+      ]
+    },
+    {
+      "name": "CyberSecurity",
+      "datasets": [
+        {
+          "name": "CCCS-CIC-AndMal-2020",
+          "description": "包含20万个良性样本和20万个恶意软件样本的网络安全数据集",
+          "status": "OK",
+          "source": "Canadian Institute for Cybersecurity",
+          "link": "https://www.unb.ca/cic/datasets/andmal2020.html",
+          "samples": "400,000",
+          "file_types": [
+            "APK",
+            "Windows PE",
+            "PDF"
+          ]
+        },
+        {
+          "name": "CICIDS2017",
+          "description": "网络入侵检测数据集，包含正常和恶意网络流量",
+          "status": "OK",
+          "source": "University of New Brunswick",
+          "link": "https://www.unb.ca/cic/datasets/ids-2017.html",
+          "size": "3.5GB",
+          "attack_types": [
+            "DDoS",
+            "Brute Force",
+            "Infiltration",
+            "Web Attacks"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "DataChallenges",
+      "datasets": [
+        {
+          "name": "Kaggle Competition Data",
+          "description": "Kaggle平台上的数据科学竞赛数据集",
+          "status": "OK",
+          "source": "Kaggle",
+          "link": "https://www.kaggle.com/competitions",
+          "active_competitions": "100+",
+          "categories": [
+            "Classification",
+            "Regression",
+            "NLP",
+            "Computer Vision"
+          ]
+        },
+        {
+          "name": "Netflix Prize Dataset",
+          "description": "Netflix推荐系统竞赛数据集，包含用户电影评分",
+          "status": "OK",
+          "source": "Netflix",
+          "link": "https://www.kaggle.com/datasets/netflix-inc/netflix-prize-data",
+          "ratings": "100M+",
+          "users": "480,000"
+        },
+        {
+          "name": "DrivenData Competitions",
+          "description": "面向社会公益的数据科学竞赛",
+          "status": "OK",
+          "source": "DrivenData",
+          "link": "https://www.drivendata.org/competitions/",
+          "focus_areas": [
+            "Healthcare",
+            "Education",
+            "Environment",
+            "Social Good"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ImageProcessing",
+      "datasets": [
+        {
+          "name": "ImageNet",
+          "description": "按照WordNet层次结构组织的大规模图像数据库",
+          "status": "OK",
+          "source": "Stanford/Princeton",
+          "link": "https://www.image-net.org/",
+          "images": "14M+",
+          "classes": "20,000+",
+          "size": "150GB+"
+        },
+        {
+          "name": "COCO Dataset",
+          "description": "通用物体识别和分割数据集",
+          "status": "OK",
+          "source": "Microsoft",
+          "link": "http://cocodataset.org/",
+          "images": "330K",
+          "objects": "1.5M",
+          "categories": "80"
+        },
+        {
+          "name": "Open Images Dataset",
+          "description": "Google提供的包含分割掩码的图像数据集",
+          "status": "OK",
+          "source": "Google",
+          "link": "https://storage.googleapis.com/openimages/web/index.html",
+          "images": "9M",
+          "object_instances": "2.8M"
+        },
+        {
+          "name": "MNIST Handwritten Digits",
+          "description": "手写数字识别数据集，近100万个样本",
+          "status": "OK",
+          "source": "Yann LeCun",
+          "link": "http://yann.lecun.com/exdb/mnist/",
+          "samples": "70,000",
+          "image_size": "28x28"
+        }
+      ]
+    },
+    {
+      "name": "MachineLearning",
+      "datasets": [
+        {
+          "name": "TensorFlow Datasets",
+          "description": "TensorFlow官方维护的机器学习数据集集合",
+          "status": "OK",
+          "source": "Google",
+          "link": "https://www.tensorflow.org/datasets",
+          "datasets_count": "300+",
+          "categories": [
+            "Vision",
+            "Text",
+            "Audio",
+            "Structured"
+          ]
+        },
+        {
+          "name": "HuggingFace Datasets",
+          "description": "面向自然语言处理的大规模数据集库",
+          "status": "OK",
+          "source": "HuggingFace",
+          "link": "https://huggingface.co/datasets",
+          "datasets_count": "10,000+",
+          "languages": "100+"
+        }
+      ]
+    },
+    {
+      "name": "NaturalLanguage",
+      "datasets": [
+        {
+          "name": "SQuAD - Stanford Question Answering",
+          "description": "斯坦福问答数据集，用于机器阅读理解",
+          "status": "OK",
+          "source": "Stanford",
+          "link": "https://rajpurkar.github.io/SQuAD-explorer/",
+          "questions": "100,000+",
+          "articles": "500+"
+        },
+        {
+          "name": "GLUE Benchmark",
+          "description": "通用语言理解评估基准",
+          "status": "OK",
+          "source": "NYU/Google",
+          "link": "https://gluebenchmark.com/",
+          "tasks": "9",
+          "languages": "English"
+        },
+        {
+          "name": "Wikipedia Text Data",
+          "description": "维基百科全文数据，包含4000万实体链接",
+          "status": "OK",
+          "source": "Wikipedia",
+          "link": "https://dumps.wikimedia.org/",
+          "size": "20TB+",
+          "languages": "300+"
+        }
+      ]
+    },
+    {
+      "name": "Software",
+      "datasets": [
+        {
+          "name": "GHTorrent",
+          "description": "GitHub项目镜像数据集，可扩展、可查询的GitHub REST API离线镜像",
+          "status": "OK",
+          "source": "GHTorrent",
+          "link": "http://ghtorrent.org/",
+          "size": "6TB+",
+          "projects": "20M+"
+        },
+        {
+          "name": "Libraries.io Open Source Data",
+          "description": "开源仓库和依赖元数据",
+          "status": "OK",
+          "source": "Libraries.io",
+          "link": "https://libraries.io/data",
+          "packages": "5M+",
+          "package_managers": "35+"
+        }
+      ]
+    },
+    {
+      "name": "ComplexNetworks",
+      "datasets": [
+        {
+          "name": "Stanford Large Network Dataset",
+          "description": "斯坦福大型网络数据集集合",
+          "status": "OK",
+          "source": "Stanford SNAP",
+          "link": "https://snap.stanford.edu/data/",
+          "networks": "100+",
+          "categories": [
+            "Social",
+            "Web",
+            "Road",
+            "Collaboration"
+          ]
+        },
+        {
+          "name": "AMiner Citation Network",
+          "description": "学术引用网络数据集",
+          "status": "OK",
+          "source": "AMiner",
+          "link": "https://www.aminer.cn/citation"
+        }
+      ]
+    },
+    {
+      "name": "GIS",
+      "datasets": [
+        {
+          "name": "OpenStreetMap Data",
+          "description": "开源街道地图数据，全球覆盖",
+          "status": "OK",
+          "source": "OpenStreetMap",
+          "link": "https://www.openstreetmap.org/",
+          "size": "100GB+",
+          "contributors": "8M+"
+        },
+        {
+          "name": "Natural Earth Data",
+          "description": "全球矢量和栅格地图数据",
+          "status": "OK",
+          "source": "Natural Earth",
+          "link": "https://www.naturalearthdata.com/",
+          "scale": "1:10m, 1:50m, 1:110m"
+        },
+        {
+          "name": "Landsat 8 on AWS",
+          "description": "AWS上的Landsat 8卫星影像数据",
+          "status": "OK",
+          "source": "NASA/USGS",
+          "link": "https://registry.opendata.aws/landsat-8/",
+          "images": "Millions",
+          "update_frequency": "Daily"
+        }
+      ]
+    }
+  ],
+  "last_updated": "2025-12-01T14:06:35.588541",
+  "total_categories": 9,
+  "total_datasets": 25
+}
