@@ -1,54 +1,33 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import request from '../utils/request.js';
-import type { User, LoginResponse, RegisterResponse } from '../types/user.js';
-
-interface LoginData {
-  username: string;
-  password: string;
-}
-
-interface RegisterData {
-  username: string;
-  email: string;
-  password: string;
-}
+import request from '../utils/request';
+import type { User, LoginData, LoginResponse, RegisterData, RegisterResponse } from '../types/user';
 
 export const useAuthStore = defineStore('auth', () => {
+  // 状态
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem('token'));
   const isAuthenticated = computed(() => !!token.value);
 
-  // 关键：补充 init 方法（路由守卫依赖）
+  // 初始化（页面加载时恢复缓存）
   const init = () => {
     const savedUser = localStorage.getItem('user');
     if (savedUser && token.value) {
       user.value = JSON.parse(savedUser);
-      // 适配后端字段名（created_at → createdAt）
-      if (user.value?.created_at) {
-        user.value = {
-          ...user.value,
-          createdAt: user.value.created_at
-        };
-      }
     }
   };
 
-  // 登录
+  // 登录（接口路径：/auth/login → 实际请求：http://localhost:3001/api/auth/login）
   const login = async (data: LoginData) => {
     const res = await request.post<LoginResponse>('/auth/login', data);
     token.value = res.token;
-    const userData = {
-      ...res.user,
-      createdAt: res.user.created_at
-    };
-    user.value = userData;
-    localStorage.setItem('token', token.value);
-    localStorage.setItem('user', JSON.stringify(userData));
-    return userData;
+    user.value = res.user;
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('user', JSON.stringify(res.user));
+    return res.user;
   };
 
-  // 注册
+  // 注册（接口路径：/auth/register → 实际请求：http://localhost:3001/api/auth/register）
   const register = async (data: RegisterData) => {
     const res = await request.post<RegisterResponse>('/auth/register', data);
     return res;
@@ -72,13 +51,9 @@ export const useAuthStore = defineStore('auth', () => {
   const fetchCurrentUser = async () => {
     try {
       const res = await request.get<User>('/auth/me');
-      const userData = {
-        ...res,
-        createdAt: res.created_at
-      };
-      user.value = userData;
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
+      user.value = res;
+      localStorage.setItem('user', JSON.stringify(res));
+      return res;
     } catch (error) {
       logout();
       throw error;
@@ -88,14 +63,11 @@ export const useAuthStore = defineStore('auth', () => {
   // 用户管理：获取所有用户
   const getUsers = async (params?: any) => {
     const res = await request.get<User[]>('/users', { params });
-    return res.map(item => ({
-      ...item,
-      createdAt: item.created_at
-    }));
+    return res;
   };
 
   // 用户管理：添加用户
-  const addUser = async (data: Omit<User, 'id' | 'createdAt' | 'status'> & { password: string }) => {
+  const addUser = async (data: Omit<User, 'id' | 'created_at' | 'status'> & { password: string }) => {
     return request.post('/users', data);
   };
 
@@ -104,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
     return request.put(`/users/${userId}`, data);
   };
 
-  // 用户管理：切换用户状态
+  // 用户管理：切换状态
   const toggleUserStatus = async (userId: number, status: 'active' | 'inactive') => {
     return request.patch(`/users/${userId}/status`, { status });
   };
@@ -114,14 +86,14 @@ export const useAuthStore = defineStore('auth', () => {
     return request.delete(`/users/${userId}`);
   };
 
-  // 初始化缓存数据（页面加载时执行）
+  // 初始化
   init();
 
   return {
     user,
     token,
     isAuthenticated,
-    init, 
+    init,
     login,
     register,
     logout,

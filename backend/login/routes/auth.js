@@ -1,4 +1,3 @@
-// backend/login/routes/auth.js
 import express from 'express';
 import pool from '../db.js';
 import bcrypt from 'bcryptjs';
@@ -8,12 +7,53 @@ import dotenv from 'dotenv';
 dotenv.config();
 const router = express.Router();
 
-// 生成 Token 函数（不变）
+// 生成 Token 函数
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '24h' });
 };
 
-// 1. 登录接口：返回 avatar 字段
+// 1. 注册接口
+router.post('/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // 校验参数
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: '用户名、邮箱、密码不能为空' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: '密码长度至少6位' });
+    }
+
+    // 检查用户名/邮箱是否已存在
+    const [existingUser] = await pool.query(
+      'SELECT * FROM users WHERE username = ? OR email = ?',
+      [username, email]
+    );
+    if (existingUser.length > 0) {
+      return res.status(409).json({ message: '用户名或邮箱已被注册' });
+    }
+
+    // 加密密码
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // 插入新用户
+    const [result] = await pool.query(
+      'INSERT INTO users (username, email, password, role, avatar, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [username, email, hashedPassword, 'user', null]
+    );
+
+    res.status(201).json({
+      message: '注册成功',
+      userId: result.insertId
+    });
+  } catch (err) {
+    res.status(500).json({ message: '注册失败', error: err.message });
+  }
+});
+
+// 2. 登录接口
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -34,7 +74,6 @@ router.post('/login', async (req, res) => {
 
     const token = generateToken(targetUser.id);
 
-    // 返回用户信息时，添加 avatar 字段
     res.json({
       token,
       user: {
@@ -42,7 +81,7 @@ router.post('/login', async (req, res) => {
         username: targetUser.username,
         email: targetUser.email,
         role: targetUser.role,
-        avatar: targetUser.avatar || null // 新增：返回头像URL，无则返回 null
+        avatar: targetUser.avatar || null
       }
     });
   } catch (err) {
@@ -50,7 +89,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 2. 获取当前用户信息接口（新增，供前端刷新用户状态）
+// 3. 获取当前用户信息接口
 router.get('/me', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -60,9 +99,8 @@ router.get('/me', async (req, res) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // 查询用户信息，包含 avatar 字段
     const [user] = await pool.query(
-      'SELECT id, username, email, role, avatar FROM users WHERE id = ?',
+      'SELECT id, username, email, role, avatar, created_at FROM users WHERE id = ?',
       [decoded.id]
     );
     
@@ -75,11 +113,17 @@ router.get('/me', async (req, res) => {
       username: user[0].username,
       email: user[0].email,
       role: user[0].role,
-      avatar: user[0].avatar || null
+      avatar: user[0].avatar || null,
+      created_at: user[0].created_at
     });
   } catch (err) {
     res.status(500).json({ message: '获取用户信息失败', error: err.message });
   }
+});
+
+// 4. 退出登录接口
+router.post('/logout', (req, res) => {
+  res.json({ message: '退出成功' });
 });
 
 export default router;

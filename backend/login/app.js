@@ -28,7 +28,7 @@ app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars
 // 解析 JSON 请求体
 app.use(express.json());
 
-// 挂载 auth 路由
+// 挂载 auth 路由（核心：前缀 /api/auth）
 app.use('/api/auth', authRoutes);
 
 // 配置 multer 上传

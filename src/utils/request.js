@@ -1,10 +1,9 @@
-// src/utils/request.ts
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';
 
-// 创建 Axios 实例，指向后端服务地址（后端运行在 3001 端口）
+// 创建 Axios 实例（baseURL 包含 /api 前缀，简化接口调用）
 const request = axios.create({
-  baseURL: 'http://localhost:3001/api', // 后端接口前缀
+  baseURL: 'http://localhost:3001/api', // 关键修正：添加 /api 前缀
   timeout: 20000,
   headers: {
     'Content-Type': 'application/json'
