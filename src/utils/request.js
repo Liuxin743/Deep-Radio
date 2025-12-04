@@ -4,9 +4,8 @@ import { useAuthStore } from '../stores/auth';
 
 // 创建 Axios 实例，指向后端服务地址（后端运行在 3001 端口）
 const request = axios.create({
-  baseURL: 'https://deep-radio-backend.onrender.com/api',
-  timeout: 5000,
-  withCredentials: true, // 必须开启：跨域携带 Token
+  baseURL: 'http://localhost:3001/api', // 后端接口前缀
+  timeout: 20000,
   headers: {
     'Content-Type': 'application/json'
   }
