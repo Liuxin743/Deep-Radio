@@ -8,9 +8,9 @@
         <button class="btn-primary" @click="refreshData" :disabled="loading">
           {{ loading ? '刷新中...' : '刷新数据' }}
         </button>
-        <a href="https://github.com/awesomedata/apd-core" target="_blank" class="btn-secondary">
+        <!-- <a href="https://github.com/awesomedata/awesome-public-datasets" target="_blank" class="btn-secondary">
           查看GitHub仓库
-        </a>
+        </a> -->
       </div>
     </div>
 
@@ -193,7 +193,7 @@
       <div class="footer-content">
         <p>
           <strong>数据来源:</strong> 
-          <a href="https://github.com/awesomedata/apd-core" target="_blank">
+          <a href="https://github.com/awesomedata/awesome-public-datasets" target="_blank">
             Awesome Public Datasets
           </a>
           | <strong>最后更新:</strong> {{ lastUpdated }}
@@ -358,9 +358,9 @@ export default {
 .page-header {
   /* background: linear-gradient(335deg, #8d9bda 0%, #764ba2 100%); */
   color: white;
-  padding: 20px 0;
+  padding: 10px 0;
   border-radius: 12px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   text-align: center;
 }
 

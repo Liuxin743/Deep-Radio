@@ -3,7 +3,6 @@
     <div class="app-contanter">
     <Navbar />
     <router-view />
-    <!-- <Footer class="footer"/> -->
     </div>
 
     

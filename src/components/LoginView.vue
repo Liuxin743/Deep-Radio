@@ -1,10 +1,22 @@
+<!-- LoginView -->
 <template>
   <div class="login-page">
     <div class="container">
       <div class="login-card">
-        <h1 class="login-title">登录</h1>
-        <form class="login-form" @submit.prevent="handleLogin">
+        <h1 class="login-title">{{ isRegister ? '注册' : '登录' }}</h1>
+        <form class="login-form" @submit.prevent="handleSubmit">
           <div class="form-group">
+            <label for="username">{{ isRegister ? '用户名' : '邮箱/用户名' }}</label>
+            <input
+              :type="isRegister ? 'text' : 'text'"
+              id="username"
+              v-model="form.username"
+              :placeholder="isRegister ? '请输入用户名' : '请输入邮箱或用户名'"
+              required
+            />
+          </div>
+          
+          <div v-if="isRegister" class="form-group">
             <label for="email">邮箱地址</label>
             <input
               type="email"
@@ -14,22 +26,44 @@
               required
             />
           </div>
+          
           <div class="form-group">
             <label for="password">密码</label>
             <input
               type="password"
               id="password"
               v-model="form.password"
-              placeholder="请输入密码"
+              :placeholder="isRegister ? '请设置密码（至少6位）' : '请输入密码'"
+              required
+              :minlength="isRegister ? 6 : 1"
+            />
+          </div>
+          
+          <div v-if="isRegister" class="form-group">
+            <label for="confirmPassword">确认密码</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              v-model="form.confirmPassword"
+              placeholder="请再次输入密码"
               required
             />
           </div>
+          
           <button type="submit" class="login-btn" :disabled="loading">
-            {{ loading ? '登录中...' : '登录' }}
+            {{ loading ? (isRegister ? '注册中...' : '登录中...') : (isRegister ? '注册' : '登录') }}
           </button>
         </form>
+        
         <div class="login-footer">
-          <p>还没有账号？ <a href="#" class="register-link">立即注册</a></p>
+          <p v-if="isRegister">
+            已有账号？ 
+            <a href="#" class="toggle-link" @click.prevent="toggleMode">立即登录</a>
+          </p>
+          <p v-else>
+            还没有账号？ 
+            <a href="#" class="toggle-link" @click.prevent="toggleMode">立即注册</a>
+          </p>
         </div>
       </div>
     </div>
@@ -37,27 +71,76 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
+const isRegister = ref(false)
 
-const form = ref({
+const form = reactive({
+  username: '',
   email: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 })
 
-const handleLogin = async () => {
+// 监听模式切换，清空表单
+watch(isRegister, () => {
+  Object.keys(form).forEach(key => {
+    form[key] = ''
+  })
+})
+
+const toggleMode = () => {
+  isRegister.value = !isRegister.value
+}
+
+const validateForm = () => {
+  if (isRegister.value) {
+    if (form.password !== form.confirmPassword) {
+      alert('两次输入的密码不一致')
+      return false
+    }
+    if (form.password.length < 6) {
+      alert('密码长度至少为6位')
+      return false
+    }
+    if (!form.email.includes('@')) {
+      alert('请输入有效的邮箱地址')
+      return false
+    }
+  }
+  return true
+}
+
+const handleSubmit = async () => {
+  if (!validateForm()) return
+  
   loading.value = true
+  
   try {
-    // 模拟登录过程
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('登录信息:', form.value)
-    // 登录成功后跳转到首页
-    router.push('/')
-  } catch (error) {
-    console.error('登录失败:', error)
+    if (isRegister.value) {
+      // 注册逻辑
+      await authStore.register({
+        username: form.username,
+        email: form.email,
+        password: form.password
+      })
+      alert('注册成功！请登录')
+      isRegister.value = false
+    } else {
+      // 登录逻辑
+      await authStore.login({
+        username: form.username,
+        password: form.password
+      })
+      router.push('/')
+    }
+  } catch (error: any) {
+    alert(error.message || '操作失败')
   } finally {
     loading.value = false
   }
@@ -65,6 +148,15 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
+.toggle-link {
+  color: #7e22ce;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.toggle-link:hover {
+  text-decoration: underline;
+}
 .login-page {
   min-height: 100vh;
   background-color: #0f172a;
