@@ -16,11 +16,29 @@ const PORT = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 跨域配置
+// // 跨域配置
+// app.use(cors({
+//   origin: 'http://localhost:5173',
+//   credentials: true
+// }));
+
+const allowedOrigins = ['http://localhost:5173', 'https://liuxin743.github.io'];
 app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
+  origin: (origin, callback) => {
+    // 允许无 origin 的请求（如 Postman），或在白名单内的 origin
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, origin);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // 允许携带 Token/Cookie
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // 支持所有请求方法
+  allowedHeaders: ['Content-Type', 'Authorization'] // 支持自定义请求头
 }));
+
+// 处理 OPTIONS 预检请求（关键：避免浏览器拦截）
+app.options('*', cors());
 
 // 静态文件服务（允许前端访问上传的头像）
 app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads/avatars')));
