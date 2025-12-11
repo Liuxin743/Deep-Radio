@@ -70,9 +70,9 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   // 用户管理：添加用户
-  const addUser = async (data: Omit<User, 'id' | 'created_at' | 'status'> & { password: string }) => {
-    return request.post('/users', data);
-  };
+  // const addUser = async (data: Omit<User, 'id' | 'created_at' | 'status'> & { password: string }) => {
+  //   return request.post('/users', data);
+  // };
 
   // 其他用户管理方法（保持不变）
   const addUser = async (data) => {
@@ -82,9 +82,9 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   // 用户管理：切换状态
-  const toggleUserStatus = async (userId: number, status: 'active' | 'inactive') => {
-    return request.patch(`/users/${userId}/status`, { status });
-  };
+  // const toggleUserStatus = async (userId: number, status: 'active' | 'inactive') => {
+  //   return request.patch(`/users/${userId}/status`, { status });
+  // };
 
   const toggleUserStatus = async (userId, status) => {
     const res = await request.patch(`/users/${userId}/status`, { status });
