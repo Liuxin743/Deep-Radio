@@ -75,11 +75,11 @@ const router = createRouter({
         // 延迟导入+获取Pinia，避免初始化问题
         const { useAuthStore } = await import('../stores/auth.js');
         const authStore = useAuthStore();
-<<<<<<< HEAD
-=======
+
+
         
         // 已登录用户访问登录页 → 跳首页
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
+
         if (authStore.isAuthenticated) {
           return { name: 'home' };
         }
@@ -89,7 +89,7 @@ const router = createRouter({
       path: '/user-management',
       name: 'user-management',
       component: UserManagement,
-<<<<<<< HEAD
+
       beforeEnter: (to, from) => {
         const authStore = useAuthStore();
         // 优化：非管理员禁止访问
@@ -99,7 +99,7 @@ const router = createRouter({
         if (authStore.user?.role !== 'admin') {
           return { name: 'home' };
         }
-=======
+
       beforeEnter: async (to, from) => {
         const { useAuthStore } = await import('../stores/auth.js');
         const authStore = useAuthStore();
@@ -118,24 +118,24 @@ const router = createRouter({
         authStore.userList = [];
         authStore.showAddUserModal = false;
         authStore.editingUser = null;
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
+
       }
     },
     {
       path: '/profile',
       name: 'profile',
       component: ProfileView,
-<<<<<<< HEAD
+
       beforeEnter: (to, from) => {
         const authStore = useAuthStore();
         // 未登录用户禁止访问，自动跳登录页
-=======
+
       beforeEnter: async (to, from) => {
         const { useAuthStore } = await import('../stores/auth.js');
         const authStore = useAuthStore();
         
         // 未登录 → 跳登录页
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
+
         if (!authStore.isAuthenticated) {
           return { name: 'login' };
         }
@@ -144,8 +144,7 @@ const router = createRouter({
   ]
 });
 
-<<<<<<< HEAD
-=======
+
 // 退出后（跳登录页）清空所有用户管理数据
 router.afterEach(async (to) => {
   if (to.name === 'login') {
@@ -163,5 +162,4 @@ router.afterEach(async (to) => {
   }
 });
 
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
 export default router;
