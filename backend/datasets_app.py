@@ -76,7 +76,7 @@ class MultiDomainCrawler:
             print(f"获取数据失败: {e}")
             return self.get_fallback_data()
     
-    # ---------------------- 新增：通信技术数据集爬取方法 ----------------------
+    # 新增：通信技术数据集爬取方法
     def crawl_communications(self):
         """爬取通信技术相关数据集（5G/6G、无线通信、卫星通信、信号处理等）"""
         print("爬取通信技术数据集...")
@@ -284,7 +284,7 @@ class MultiDomainCrawler:
         
         return datasets
     
-    # ---------------------- 原有方法保持不变 ----------------------
+    # 原有数据集
     def crawl_computer_networks(self):
         """爬取计算机网络数据集"""
         print("爬取计算机网络数据集...")

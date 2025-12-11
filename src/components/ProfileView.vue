@@ -1,7 +1,6 @@
 <template>
   <div class="profile-page">
     <div class="container">
-      <!-- <h1 class="page-title">个人中心</h1> -->
       
       <div class="profile-content">
         <!-- 头像上传区域 -->

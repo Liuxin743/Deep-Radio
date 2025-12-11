@@ -1,4 +1,6 @@
 # Deep-Radio
+## 打开整个project
+npm run dev
 ## 更新数据接口端运行
 python XXX页面名称
 datasets_app.py 数据集页面
@@ -7,3 +9,4 @@ node app.js
 ## 数据库
 用户名：root
 密码：Root123456
+## Huggin face API

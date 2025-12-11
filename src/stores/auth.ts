@@ -36,12 +36,15 @@ export const useAuthStore = defineStore('auth', () => {
   // 退出登录
   const logout = async () => {
     try {
-      if (token.value) {
-        await request.post('/auth/logout');
-      }
-    } finally {
-      user.value = null;
+      const res = await request.post('/auth/login', data);
+      token.value = res.token;
+      user.value = res.user;
+      localStorage.setItem('token', res.token);
+      localStorage.setItem('user', JSON.stringify(res.user));
+      return res.user;
+    } catch (error) {
       token.value = null;
+      user.value = null;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
@@ -71,9 +74,11 @@ export const useAuthStore = defineStore('auth', () => {
     return request.post('/users', data);
   };
 
-  // 用户管理：编辑用户
-  const updateUser = async (userId: number, data: Partial<User>) => {
-    return request.put(`/users/${userId}`, data);
+  // 其他用户管理方法（保持不变）
+  const addUser = async (data) => {
+    const res = await request.post('/users', data);
+    await getUsers();
+    return res;
   };
 
   // 用户管理：切换状态
@@ -81,9 +86,16 @@ export const useAuthStore = defineStore('auth', () => {
     return request.patch(`/users/${userId}/status`, { status });
   };
 
-  // 用户管理：删除用户
-  const deleteUser = async (userId: number) => {
-    return request.delete(`/users/${userId}`);
+  const toggleUserStatus = async (userId, status) => {
+    const res = await request.patch(`/users/${userId}/status`, { status });
+    await getUsers();
+    return res;
+  };
+
+  const deleteUser = async (userId) => {
+    const res = await request.delete(`/users/${userId}`);
+    await getUsers();
+    return res;
   };
 
   // 初始化
@@ -95,9 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     init,
     login,
-    register,
     logout,
-    fetchCurrentUser,
     getUsers,
     addUser,
     updateUser,

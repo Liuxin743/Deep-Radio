@@ -71,7 +71,7 @@
             </div>
             
             <!-- 菜单分割线 -->
-            <div class="dropdown-divider"></div>
+            <!-- <div class="dropdown-divider"></div> -->
             
             <!-- 菜单选项：更换头像 -->
             <label class="dropdown-item avatar-upload-item">
@@ -100,7 +100,6 @@
               class="dropdown-item"
               @click="isDropdownOpen = false"
             >
-              <i class="item-icon">⚙️</i>
               <span>用户管理</span>
             </router-link>
             

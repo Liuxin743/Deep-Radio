@@ -11,6 +11,7 @@
       <table class="users-table">
         <thead>
           <tr>
+            <!-- 移除头像列 -->
             <th>ID</th>
             <th>用户名</th>
             <th>邮箱</th>
@@ -21,15 +22,14 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.id">
-            <!-- 修复：渲染用户头像 -->
-            <td>
-              <img 
-                :src="user.avatar || 'https://via.placeholder.com/40/7e22ce/ffffff?text=U'" 
-                alt="用户头像"
-                class="user-avatar-img"
-              />
+          <tr v-if="users.length === 0">
+            <!-- 调整列数为7列（移除头像后） -->
+            <td colspan="7" class="empty-state">
+              暂无用户数据，请点击"添加用户"创建第一个用户
             </td>
+          </tr>
+          <tr v-else v-for="user in users" :key="user.id">
+            <!-- 移除头像单元格 -->
             <td>{{ user.id }}</td>
             <td>{{ user.username }}</td>
             <td>{{ user.email }}</td>
@@ -38,7 +38,7 @@
                 {{ user.role === 'admin' ? '管理员' : '普通用户' }}
               </span>
             </td>
-            <td>{{ formatDate(user.createdAt) }}</td>
+            <td>{{ formatDate(user.createdAt || user.created_at) }}</td>
             <td>
               <span class="status-badge" :class="user.status">
                 {{ user.status === 'active' ? '活跃' : '禁用' }}
@@ -53,7 +53,7 @@
                 {{ user.status === 'active' ? '禁用' : '启用' }}
               </button>
               <button 
-                v-if="user.id !== currentUser.id"
+                v-if="user.id !== currentUser?.id"
                 @click="deleteUser(user.id)"
                 class="btn-delete"
               >
@@ -106,26 +106,31 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
-const authStore = useAuthStore()
-const showAddUserModal = ref(false)
-const editingUser = ref<any>(null)
-
-// 接口返回 avatar 字段，更新 User 类型
+// 类型定义（移除avatar字段）
 interface User {
   id: number
   username: string
   email: string
   role: 'user' | 'admin'
   status: 'active' | 'inactive'
-  createdAt: string
-  avatar?: string // 新增：头像URL（可选）
+  createdAt?: string
+  created_at?: string
 }
 
+// 状态管理
+const authStore = useAuthStore()
+const router = useRouter()
+const showAddUserModal = ref(false)
+const editingUser = ref<User | null>(null)
 const users = ref<User[]>([])
-const currentUser = computed(() => authStore.user)
 
+// 当前用户（移除avatar相关）
+const currentUser = computed(() => authStore.user || { id: -1 })
+
+// 表单数据
 const userForm = reactive({
   username: '',
   email: '',
@@ -133,95 +138,123 @@ const userForm = reactive({
   role: 'user' as 'user' | 'admin'
 })
 
-// 面挂载重复调用，保留一个即可
-onMounted(() => {
-  loadUsers()
-});
-
+// 加载用户数据
 const loadUsers = async () => {
-  users.value = await authStore.getUsers();
+  try {
+    console.log('加载用户数据...');
+    const userList = await authStore.getUsers();
+    users.value = Array.isArray(userList) ? userList : [];
+    console.log('用户数据:', users.value);
+  } catch (error: any) {
+    console.error('加载用户失败:', error);
+    alert(`加载用户失败：${error.message || '未知错误'}`);
+    users.value = [];
+  }
 };
 
-// 补全 editUser 方法（编辑用户时回显数据）
+// 生命周期
+onMounted(() => {
+  if (authStore.user?.role !== 'admin') {
+    alert('无管理员权限！')
+    router.push('/')
+    return
+  }
+  loadUsers();
+});
+
+// 编辑用户
 const editUser = (user: User) => {
   editingUser.value = user;
-  // 回显用户数据（密码留空，避免暴露）
   userForm.username = user.username;
   userForm.email = user.email;
   userForm.role = user.role;
   userForm.password = '';
 };
 
-// 补全 closeModal 方法（关闭模态框）
+// 关闭模态框
 const closeModal = () => {
   showAddUserModal.value = false;
   editingUser.value = null;
-  // 清空表单
   userForm.username = '';
   userForm.email = '';
   userForm.password = '';
   userForm.role = 'user';
 };
 
-// 补全 formatDate 方法（格式化时间）
-const formatDate = (dateString: string) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+// 格式化日期
+const formatDate = (dateString?: string) => {
+  if (!dateString) return '未设置';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return '格式错误';
+  }
 };
 
+// 保存用户
 const saveUser = async () => {
   try {
     if (editingUser.value) {
-      await authStore.updateUser(editingUser.value.id, userForm);
+      const updateData = {
+        username: userForm.username,
+        email: userForm.email,
+        role: userForm.role,
+        ...(userForm.password ? { password: userForm.password } : {})
+      };
+      await authStore.updateUser(editingUser.value.id, updateData);
+      alert('用户更新成功');
     } else {
       await authStore.addUser(userForm);
+      alert('用户添加成功');
     }
     closeModal();
     loadUsers();
-  } catch (error) {
-    alert('操作失败');
+  } catch (error: any) {
+    alert(`操作失败：${error.message || '未知错误'}`);
   }
 };
 
+// 切换用户状态
 const toggleUserStatus = async (user: User) => {
   const newStatus = user.status === 'active' ? 'inactive' : 'active';
   if (confirm(`确定要${newStatus === 'active' ? '启用' : '禁用'}用户 ${user.username} 吗？`)) {
-    await authStore.toggleUserStatus(user.id, newStatus);
-    loadUsers();
+    try {
+      await authStore.toggleUserStatus(user.id, newStatus);
+      loadUsers();
+    } catch (error: any) {
+      alert(`状态切换失败：${error.message || '未知错误'}`);
+    }
   }
 };
 
+// 删除用户
 const deleteUser = async (userId: number) => {
   if (confirm('确定要删除这个用户吗？此操作不可撤销。')) {
-    await authStore.deleteUser(userId);
-    loadUsers();
+    try {
+      await authStore.deleteUser(userId);
+      loadUsers();
+      alert('用户删除成功');
+    } catch (error: any) {
+      alert(`删除失败：${error.message || '未知错误'}`);
+    }
   }
 };
 </script>
 
 <style scoped>
-/* 新增：用户头像样式 */
-.user-avatar-img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #374151;
-}
-
-/* 原有样式不变，保留以下代码 */
+/* 基础布局 */
 .user-management {
   padding: 2rem;
   background: #0f172a;
   min-height: 100vh;
+  color: #fff;
 }
 
 .header {
@@ -234,8 +267,10 @@ const deleteUser = async (userId: number) => {
 .header h1 {
   color: white;
   font-size: 2rem;
+  margin: 0;
 }
 
+/* 添加用户按钮 */
 .add-user-btn {
   background: linear-gradient(135deg, #7e22ce, #a855f7);
   color: white;
@@ -255,11 +290,13 @@ const deleteUser = async (userId: number) => {
   box-shadow: 0 4px 12px rgba(126, 34, 206, 0.3);
 }
 
+/* 表格容器 */
 .users-table-container {
   background: #1e293b;
   border-radius: 1rem;
   padding: 1.5rem;
   border: 1px solid #374151;
+  min-height: 200px;
 }
 
 .users-table {
@@ -279,8 +316,20 @@ const deleteUser = async (userId: number) => {
 .users-table td {
   padding: 1rem;
   border-bottom: 1px solid #374151;
+  vertical-align: middle;
 }
 
+/* 移除头像样式 */
+
+/* 空数据状态 */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+/* 角色标签 */
 .role-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
@@ -297,6 +346,7 @@ const deleteUser = async (userId: number) => {
   color: #3b82f6;
 }
 
+/* 状态标签 */
 .status-badge {
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
@@ -313,9 +363,11 @@ const deleteUser = async (userId: number) => {
   color: #ef4444;
 }
 
+/* 操作按钮 */
 .actions {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .actions button {
@@ -355,6 +407,7 @@ const deleteUser = async (userId: number) => {
   background: rgba(239, 68, 68, 0.3);
 }
 
+/* 模态框 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -380,6 +433,7 @@ const deleteUser = async (userId: number) => {
 .modal h2 {
   color: white;
   margin-bottom: 1.5rem;
+  margin-top: 0;
 }
 
 .modal .form-group {
@@ -400,6 +454,7 @@ const deleteUser = async (userId: number) => {
   border: 1px solid #374151;
   border-radius: 0.5rem;
   color: white;
+  box-sizing: border-box;
 }
 
 .modal .form-group input:focus,

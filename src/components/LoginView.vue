@@ -1,4 +1,4 @@
-<!-- LoginView -->
+
 <template>
   <div class="login-page">
     <div class="container">
@@ -132,12 +132,17 @@ const handleSubmit = async () => {
       alert('注册成功！请登录')
       isRegister.value = false
     } else {
-      // 登录逻辑
-      await authStore.login({
+      // 登录逻辑 - 接收返回的用户信息
+      const user = await authStore.login({
         username: form.username,
         password: form.password
       })
-      router.push('/')
+      // 根据角色跳转
+      if (user.role === 'admin') {
+        router.push('/user-management') // 管理员跳转到用户管理页
+      } else {
+        router.push('/') // 普通用户跳转到首页
+      }
     }
   } catch (error: any) {
     alert(error.message || '操作失败')
