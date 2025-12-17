@@ -1,274 +1,1128 @@
 <template>
   <div class="community-view">
-    <!-- <header>
+    <!-- 头部导航 -->
+    <header class="community-header">
       <div class="container">
         <div class="header-content">
           <div class="logo">
-            <div class="logo-icon">AI</div>
-            <h1>AI通信社区</h1>
+            <i class="fas fa-satellite-dish"></i>
+            <span>通信技术社区</span>
           </div>
-          <div class="user-info">
-            <div class="user-avatar">SG</div>
-            <span>SG</span>
+          
+          <div class="header-search">
+            <input 
+              type="text" 
+              v-model="searchQuery" 
+              placeholder="搜索通信技术、5G/6G、信号处理..."
+              @keyup.enter="performSearch"
+            >
+            <button class="search-btn" @click="performSearch">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          
+          <div class="header-actions">
+            <button class="btn notification-btn" @click="toggleNotifications">
+              <i class="fas fa-bell"></i>
+              <span v-if="unreadNotifications" class="notification-badge">{{ unreadNotifications }}</span>
+            </button>
+            <button class="btn btn-primary publish-btn" @click="showPublishModal = true">
+              <i class="fas fa-plus"></i> 发帖子
+            </button>
           </div>
         </div>
       </div>
-    </header> -->
+    </header>
     
+    <!-- 分类导航 -->
     <div class="container">
-      <div class="main-content">
-        <aside class="sidebar">
-          <h2>导航菜单</h2>
-          <ul class="nav-menu">
-            <li v-for="item in navItems" :key="item.id">
-              <a 
-                href="#" 
-                :class="{ active: item.active }"
-                @click.prevent="setActiveNav(item.id)"
-              >
-                <span class="nav-icon">{{ item.icon }}</span> {{ item.name }}
-              </a>
-            </li>
-          </ul>
-        </aside>
+      <div class="community-nav">
+        <div class="category-tabs">
+          <button 
+            v-for="category in categories" 
+            :key="category.value"
+            class="category-tab"
+            :class="{ active: selectedCategory === category.value }"
+            @click="selectedCategory = category.value"
+          >
+            <i :class="category.icon"></i>
+            {{ category.label }}
+          </button>
+        </div>
         
-        <main class="content">
-          <div class="category-selector">
-            <select v-model="selectedCategory">
-              <option value="">选择分类</option>
-              <option v-for="category in categories" :value="category" :key="category">
-                {{ category }}
-              </option>
-            </select>
-            <button class="publish-btn" @click="showPublishModal = true">发布</button>
+        <div class="theme-toggle">
+          <button 
+            class="theme-btn" 
+            @click="toggleTheme"
+            :title="isDarkTheme ? '切换到亮色主题' : '切换到暗色主题'"
+          >
+            <i :class="isDarkTheme ? 'fas fa-sun' : 'fas fa-moon'"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 主要内容区域 -->
+      <div class="main-content">
+        <!-- 通信知识动态轮播 -->
+        <div v-if="communicationResources.length > 0 && !selectedCategory" class="knowledge-carousel">
+          <div class="carousel-container">
+            <div 
+              v-for="(resource, index) in featuredResources" 
+              :key="resource.id"
+              class="carousel-slide"
+              :class="{ active: currentSlide === index }"
+            >
+              <div class="slide-content">
+                <div class="slide-badge">{{ resource.type }}</div>
+                <h3>{{ resource.title }}</h3>
+                <p>{{ resource.description }}</p>
+                <div class="slide-actions">
+                  <a :href="resource.url" target="_blank" class="btn btn-outline">
+                    查看详情 <i class="fas fa-arrow-right"></i>
+                  </a>
+                  <button class="btn btn-secondary" @click="saveResource(resource)">
+                    <i class="fas fa-bookmark"></i> 收藏
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="carousel-dots">
+            <button 
+              v-for="(_, index) in featuredResources" 
+              :key="index"
+              class="dot"
+              :class="{ active: currentSlide === index }"
+              @click="currentSlide = index"
+            ></button>
+          </div>
+        </div>
+        
+        <!-- 通信知识动态网格 -->
+        <div v-if="communicationResources.length > 0" class="knowledge-dynamics">
+          <div class="dynamics-header">
+            <h3 class="section-title">
+              <i class="fas fa-bolt"></i> 最新通信知识动态
+            </h3>
+            <div class="view-options">
+              <button class="view-btn" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+                <i class="fas fa-th-large"></i>
+              </button>
+              <button class="view-btn" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+                <i class="fas fa-list"></i>
+              </button>
+            </div>
           </div>
           
-          <div class="post-card" v-for="post in filteredPosts" :key="post.id">
-            <!-- 删除按钮 - 只有自己发布的帖子才显示 -->
-            <button 
-              class="delete-btn" 
-              v-if="post.author === currentUser" 
-              @click="deletePost(post.id)"
+          <div class="resources-container" :class="viewMode">
+            <div 
+              class="knowledge-card" 
+              v-for="resource in filteredResources" 
+              :key="resource.id"
             >
-              ×
-            </button>
-            
-            <div class="post-header">
-              <div class="author-avatar">{{ post.authorInitials }}</div>
-              <div class="author-info">
-                <div class="author-name">{{ post.author }}</div>
-                <div class="author-title">{{ post.title }}</div>
+              <div class="knowledge-header">
+                <div class="knowledge-type">{{ resource.type }}</div>
+                <div class="knowledge-time">{{ formatRelativeTime(resource.pubDate) }}</div>
               </div>
-              <div class="post-time">{{ post.time }}</div>
-            </div>
-            
-            <div class="post-content">
-              <h3 class="post-title">{{ post.postTitle }}</h3>
-              <p class="post-text">{{ post.content }}</p>
-              <div class="post-tags">
-                <span class="tag" v-for="tag in post.tags" :key="tag">{{ tag }}</span>
+              <div class="knowledge-body">
+                <h4>{{ resource.title }}</h4>
+                <p>{{ resource.description }}</p>
+                <div class="knowledge-tags">
+                  <span v-for="tag in resource.tags" :key="tag" class="knowledge-tag">
+                    {{ tag }}
+                  </span>
+                </div>
               </div>
-            </div>
-            
-            <div class="post-actions">
-              <button class="like-btn" @click="toggleLike(post)">
-                <span>👍</span>
-                <span class="like-count">{{ post.likes }}</span>
-              </button>
-              <a href="#" class="comment-btn">技术交流</a>
+              <div class="knowledge-footer">
+                <span class="knowledge-source">{{ resource.source }}</span>
+                <div class="knowledge-actions">
+                  <a :href="resource.url" target="_blank" class="knowledge-link">
+                    阅读全文 <i class="fas fa-external-link-alt"></i>
+                  </a>
+                  <button class="action-btn" @click="shareResource(resource)" title="分享">
+                    <i class="fas fa-share-alt"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </main>
+        </div>
+        
+        <!-- 社区帖子区域 -->
+        <div class="community-posts">
+          <div class="posts-header">
+            <h3 class="section-title">
+              <i class="fas fa-comments"></i> 社区技术讨论
+              <span class="posts-count">({{ filteredPosts.length }})</span>
+            </h3>
+            <div class="posts-filter">
+              <select v-model="postsSort" class="sort-select">
+                <option value="newest">最新发布</option>
+                <option value="hottest">最热讨论</option>
+                <option value="commented">最多评论</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- 快速发帖 -->
+          <div class="quick-post-card">
+            <div class="post-author">
+              <div class="author-avatar">你</div>
+            </div>
+            <div class="post-input-area">
+              <input 
+                type="text" 
+                v-model="quickPostTitle"
+                placeholder="帖子标题..."
+                class="post-title-input"
+              >
+              <textarea 
+                v-model="quickPostContent"
+                placeholder="分享你的通信技术见解、问题或经验..."
+                class="post-content-input"
+                @focus="showQuickPostOptions = true"
+              ></textarea>
+              <div v-if="showQuickPostOptions" class="post-options">
+                <div class="option-tags">
+                  <span 
+                    v-for="tag in quickTags" 
+                    :key="tag"
+                    class="quick-tag"
+                    @click="addTagToQuickPost(tag)"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+                <div class="option-actions">
+                  <button class="btn btn-secondary" @click="cancelQuickPost">取消</button>
+                  <button class="btn btn-primary" @click="publishQuickPost" :disabled="!quickPostContent.trim()">
+                    发布帖子
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 帖子列表 -->
+          <div class="posts-list">
+            <div 
+              class="post-card" 
+              v-for="post in sortedPosts" 
+              :key="post.id"
+              :class="{ 'new-post': post.isNew, 'hot-post': post.likes > 20 }"
+            >
+              <div class="post-card-header">
+                <div class="post-author-info">
+                  <div class="author-avatar" :style="{ background: post.authorColor }">
+                    {{ post.authorInitials }}
+                  </div>
+                  <div class="author-details">
+                    <div class="author-name">{{ post.author }}</div>
+                    <div class="post-meta">
+                      <span class="post-category">{{ post.category }}</span>
+                      <span class="post-time">{{ formatRelativeTime(post.time) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="post-actions-top">
+                  <button 
+                    v-if="post.author === currentUser" 
+                    class="action-btn edit-btn" 
+                    @click="editPost(post)"
+                    title="编辑"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button 
+                    v-if="post.author === currentUser" 
+                    class="action-btn delete-btn" 
+                    @click="deletePost(post.id)"
+                    title="删除"
+                  >
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="post-card-body">
+                <h3 class="post-title">{{ post.title }}</h3>
+                <div class="post-content">
+                  <p>{{ post.content }}</p>
+                  
+                  <div v-if="post.codeSnippet" class="post-code">
+                    <div class="code-header">
+                      <span class="code-language">{{ post.codeLanguage || 'python' }}</span>
+                      <button class="copy-code-btn" @click="copyCode(post.codeSnippet)">
+                        <i class="fas fa-copy"></i> 复制代码
+                      </button>
+                    </div>
+                    <pre><code>{{ post.codeSnippet }}</code></pre>
+                  </div>
+                  
+                  <div v-if="post.images && post.images.length > 0" class="post-images">
+                    <div class="image-grid">
+                      <div 
+                        v-for="(image, index) in post.images" 
+                        :key="index"
+                        class="image-item"
+                        @click="viewImage(image)"
+                      >
+                        <img :src="image" :alt="`图片${index + 1}`">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="post-tags">
+                  <span 
+                    v-for="tag in post.tags" 
+                    :key="tag"
+                    class="post-tag"
+                    @click="filterByTag(tag)"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
+              </div>
+              
+              <div class="post-card-footer">
+                <div class="post-stats">
+                  <button 
+                    class="stat-btn like-btn" 
+                    :class="{ liked: post.liked }"
+                    @click="toggleLike(post)"
+                  >
+                    <i class="fas fa-thumbs-up"></i>
+                    <span class="stat-count">{{ post.likes }}</span>
+                  </button>
+                  <button 
+                    class="stat-btn comment-btn" 
+                    @click="toggleComments(post)"
+                  >
+                    <i class="fas fa-comment"></i>
+                    <span class="stat-count">{{ post.comments }}</span>
+                  </button>
+                  <button 
+                    class="stat-btn bookmark-btn"
+                    :class="{ bookmarked: post.bookmarked }"
+                    @click="toggleBookmark(post)"
+                  >
+                    <i class="fas fa-bookmark"></i>
+                    <span class="stat-count">{{ post.bookmarks || 0 }}</span>
+                  </button>
+                  <button class="stat-btn share-btn" @click="sharePost(post)">
+                    <i class="fas fa-share"></i>
+                  </button>
+                </div>
+                
+                <div class="post-views">
+                  <i class="fas fa-eye"></i>
+                  <span>{{ post.views || 0 }} 次浏览</span>
+                </div>
+              </div>
+              
+              <!-- 评论区域 -->
+              <div v-if="post.showComments" class="post-comments">
+                <div class="comment-form">
+                  <div class="comment-author-avatar">你</div>
+                  <div class="comment-input-wrapper">
+                    <input 
+                      type="text" 
+                      v-model="post.newComment" 
+                      placeholder="写下你的评论..."
+                      @keyup.enter="addComment(post)"
+                    >
+                    <button class="btn btn-small" @click="addComment(post)" :disabled="!post.newComment.trim()">
+                      发送
+                    </button>
+                  </div>
+                </div>
+                <div class="comments-list">
+                  <div v-for="comment in post.commentsList" :key="comment.id" class="comment-item">
+                    <div class="comment-author-avatar">{{ comment.authorInitials }}</div>
+                    <div class="comment-content">
+                      <div class="comment-header">
+                        <span class="comment-author">{{ comment.author }}</span>
+                        <span class="comment-time">{{ comment.time }}</span>
+                      </div>
+                      <p class="comment-text">{{ comment.text }}</p>
+                      <div class="comment-actions">
+                        <button class="comment-action-btn" @click="likeComment(comment)">
+                          <i class="fas fa-thumbs-up"></i> {{ comment.likes || 0 }}
+                        </button>
+                        <button class="comment-action-btn" @click="replyToComment(comment, post)">
+                          <i class="fas fa-reply"></i> 回复
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 加载更多 -->
+          <div v-if="hasMorePosts" class="load-more">
+            <button class="btn btn-outline" @click="loadMorePosts">
+              <i class="fas fa-plus"></i> 加载更多帖子
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- 发布模态框 -->
-    <div class="modal" v-if="showPublishModal" @click="showPublishModal = false">
+    
+    <!-- 发帖子模态框 -->
+    <div v-if="showPublishModal" class="modal-overlay" @click="showPublishModal = false">
       <div class="modal-content" @click.stop>
-        <h3>发布新内容</h3>
-        <form @submit.prevent="publishPost">
-          <div class="form-group">
-            <label>标题</label>
-            <input type="text" v-model="newPost.title" required>
+        <div class="modal-header">
+          <h3><i class="fas fa-pen"></i> 发表新帖子</h3>
+          <button class="modal-close" @click="showPublishModal = false">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <form @submit.prevent="publishPost" class="publish-form">
+          <div class="form-section">
+            <label><i class="fas fa-heading"></i> 帖子标题 *</label>
+            <input 
+              type="text" 
+              v-model="newPost.title" 
+              placeholder="请输入帖子标题..." 
+              required
+              maxlength="100"
+            >
+            <div class="char-count">{{ newPost.title.length }}/100</div>
           </div>
-          <div class="form-group">
-            <label>内容</label>
-            <textarea v-model="newPost.content" rows="5" required></textarea>
+          
+          <div class="form-section">
+            <label><i class="fas fa-align-left"></i> 帖子内容 *</label>
+            <div class="post-editor">
+              <textarea 
+                v-model="newPost.content" 
+                rows="8" 
+                placeholder="详细描述你的技术问题、研究成果或经验分享..." 
+                required
+              ></textarea>
+              <div class="editor-tools">
+                <button type="button" @click="insertCodeBlock" class="tool-btn">
+                  <i class="fas fa-code"></i> 插入代码
+                </button>
+                <button type="button" class="tool-btn" @click="triggerImageUpload">
+                  <i class="fas fa-image"></i> 插入图片
+                </button>
+                <button type="button" @click="insertLink" class="tool-btn">
+                  <i class="fas fa-link"></i> 插入链接
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>标签 (用逗号分隔)</label>
-            <input type="text" v-model="newPost.tagsInput">
+          
+          <div class="form-section">
+            <label><i class="fas fa-tags"></i> 选择分类</label>
+            <div class="category-selection">
+              <div 
+                v-for="category in categories" 
+                :key="category.value"
+                class="category-option"
+                :class="{ selected: newPost.category === category.value }"
+                @click="newPost.category = category.value"
+              >
+                <i :class="category.icon"></i>
+                <span>{{ category.label }}</span>
+              </div>
+            </div>
           </div>
+          
+          <div class="form-section">
+            <label><i class="fas fa-hashtag"></i> 添加标签</label>
+            <div class="tags-editor">
+              <div class="selected-tags">
+                <div 
+                  v-for="tag in newPost.tags" 
+                  :key="tag"
+                  class="selected-tag"
+                >
+                  {{ tag }}
+                  <button type="button" @click="removeTag(tag)" class="remove-tag-btn">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="tag-input-wrapper">
+                <input 
+                  type="text" 
+                  v-model="newTagInput"
+                  placeholder="输入标签后按回车添加..."
+                  @keyup.enter="addNewTag"
+                >
+                <button type="button" class="btn btn-small" @click="addNewTag">添加</button>
+              </div>
+              <div class="suggested-tags">
+                <span 
+                  v-for="tag in suggestedTags" 
+                  :key="tag"
+                  class="suggested-tag"
+                  @click="addSuggestedTag(tag)"
+                >
+                  {{ tag }}
+                </span>
+              </div>
+            </div>
+          </div>
+          
           <div class="form-actions">
-            <button type="button" @click="showPublishModal = false">取消</button>
-            <button type="submit">发布</button>
+            <button type="button" class="btn btn-secondary" @click="showPublishModal = false">
+              取消
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-paper-plane"></i> 立即发布
+            </button>
           </div>
         </form>
+      </div>
+    </div>
+    
+    <!-- 图片查看器 -->
+    <div v-if="viewingImage" class="image-viewer-overlay" @click="viewingImage = null">
+      <div class="image-viewer-content" @click.stop>
+        <button class="close-viewer" @click="viewingImage = null">
+          <i class="fas fa-times"></i>
+        </button>
+        <img :src="viewingImage" alt="查看图片">
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-
-// 当前登录用户
-const currentUser = ref('SG')
-
-// 导航菜单数据
-const navItems = ref([
-  { id: 1, name: 'AI资源导航', icon: '📚', active: true },
-  { id: 2, name: '热门框架', icon: '🔥', active: false },
-  { id: 3, name: '通信技术', icon: '📡', active: false },
-  { id: 4, name: '学习资源', icon: '🎓', active: false },
-  { id: 5, name: '最新论文', icon: '📄', active: false },
-  { id: 6, name: '实战教程', icon: '🛠️', active: false },
-  { id: 7, name: '数据集', icon: '📊', active: false },
-  { id: 8, name: 'AI工具推荐', icon: '🔧', active: false }
-])
-
-// 设置活跃导航项
-const setActiveNav = (id) => {
-  navItems.value.forEach(item => {
-    item.active = item.id === id
-  })
-}
-
-// 帖子数据
-const posts = ref([
-  {
-    id: 1,
-    author: '李华',
-    authorInitials: 'LH',
-    title: '通信系统专家 | 编译器',
-    time: '2小时前',
-    postTitle: '基于深度学习的5G信号优化项目',
-    content: '使用Transformer架构处理时序信号，相比传统方法性能提升30%。关键点：注意力机制、端到端训练。',
-    tags: ['深度学习', 'SG', 'Transformer', '信号处理'],
-    likes: 24,
-    liked: false,
-    category: '深度学习'
+<script>
+export default {
+  name: 'CommunicationCommunity',
+  data() {
+    return {
+      currentUser: '用户',
+      searchQuery: '',
+      selectedCategory: '',
+      postsSort: 'newest',
+      viewMode: 'grid',
+      showPublishModal: false,
+      showNotifications: false,
+      showQuickPostOptions: false,
+      quickPostTitle: '',
+      quickPostContent: '',
+      currentSlide: 0,
+      loading: false,
+      error: '',
+      newTagInput: '',
+      isDarkTheme: true,
+      viewingImage: null,
+      hasMorePosts: true,
+      
+      categories: [
+        { value: '', label: '全部', icon: 'fas fa-layer-group' },
+        { value: '5G技术', label: '5G技术', icon: 'fas fa-tower-broadcast' },
+        { value: '6G前沿', label: '6G前沿', icon: 'fas fa-satellite' },
+        { value: '信号处理', label: '信号处理', icon: 'fas fa-wave-square' },
+        { value: '无线通信', label: '无线通信', icon: 'fas fa-wifi' },
+        { value: '网络优化', label: '网络优化', icon: 'fas fa-network-wired' },
+        { value: 'AI通信', label: 'AI通信', icon: 'fas fa-brain' },
+        { value: '技术问答', label: '技术问答', icon: 'fas fa-question-circle' }
+      ],
+      
+      quickTags: ['5G', '6G', '信号处理', '无线通信', '技术问题', '经验分享', '研究进展'],
+      
+      suggestedTags: ['5G-A', '毫米波', '波束赋形', '信道估计', '频谱感知', '网络切片', '通感算一体', '太赫兹', 'MIMO', 'OFDM'],
+      
+      // 帖子数据
+      posts: [
+        {
+          id: 1,
+          author: '通信工程师',
+          authorInitials: 'CE',
+          authorColor: '#6366f1',
+          title: '5G网络切片技术在工业互联网中的应用实践',
+          content: '在最近的工业互联网项目中，我们成功部署了基于5G网络切片的专用网络。通过为不同业务类型（如控制信号、视频监控、数据采集）创建独立的网络切片，实现了服务质量保障和资源隔离。关键挑战在于切片资源的动态调度和跨域协同。',
+          category: '5G技术',
+          time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          tags: ['5G', '网络切片', '工业互联网', 'QoS'],
+          likes: 42,
+          liked: false,
+          bookmarked: true,
+          bookmarks: 15,
+          comments: 8,
+          views: 156,
+          showComments: false,
+          newComment: '',
+          commentsList: [
+            { id: 1, author: '网络架构师', authorInitials: 'NA', text: '请问你们是如何实现切片之间的资源隔离的？', time: '1小时前', likes: 3 },
+            { id: 2, author: '系统工程师', authorInitials: 'SE', text: '我们也遇到了类似的问题，可以分享一下你们的解决方案吗？', time: '45分钟前', likes: 1 }
+          ],
+          codeSnippet: `# 网络切片配置示例
+network_slices = {
+  'industrial_control': {
+    'bandwidth': '100Mbps',
+    'latency': '10ms',
+    'reliability': '99.999%',
+    'isolation': 'strict'
   },
-  {
-    id: 2,
-    author: '张明',
-    authorInitials: 'ZM',
-    title: 'AI算法工程师 | 研究员',
-    time: '5小时前',
-    postTitle: '夯实AI技术心性，通信算法研究应用日益强',
-    content: '分享近期在通信信号处理领域的研究进展，探讨如何将最新的AI技术应用于传统通信领域，实现性能突破。',
-    tags: ['AI算法', '通信', '研究应用'],
-    likes: 18,
-    liked: false,
-    category: 'AI算法'
+  'video_surveillance': {
+    'bandwidth': '50Mbps',
+    'latency': '50ms',
+    'reliability': '99.9%',
+    'isolation': 'moderate'
+  }
+}`,
+          codeLanguage: 'python',
+          isNew: true
+        },
+        {
+          id: 2,
+          author: '研究员',
+          authorInitials: 'RS',
+          authorColor: '#10b981',
+          title: '6G通感算一体化技术研究进展与挑战',
+          content: '6G网络将实现通信、感知和计算的一体化融合。最新的研究表明，通过联合设计通信和感知信号，可以实现毫米级精度的环境感知。主要挑战包括信号处理算法的复杂度、硬件实现难度以及标准化问题。我们提出了一种基于深度学习的联合优化框架。',
+          category: '6G前沿',
+          time: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+          tags: ['6G', '通感算一体', '深度学习', '研究进展'],
+          likes: 78,
+          liked: true,
+          bookmarked: true,
+          bookmarks: 32,
+          comments: 15,
+          views: 289,
+          showComments: false,
+          newComment: '',
+          commentsList: [
+            { id: 1, author: '博士研究生', authorInitials: 'PD', text: '非常前沿的研究！请问感知精度能达到什么水平？', time: '2小时前', likes: 5 }
+          ],
+          images: [
+            'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80',
+            'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w-800&q=80'
+          ],
+          isNew: false
+        },
+        {
+          id: 3,
+          author: '算法工程师',
+          authorInitials: 'AE',
+          authorColor: '#8b5cf6',
+          title: '基于深度学习的MIMO信道估计算法优化',
+          content: '针对大规模MIMO系统中的信道估计问题，我们提出了一种基于Transformer的深度学习算法。相比传统的LS和MMSE算法，新算法在低信噪比条件下性能提升显著。关键创新在于多头注意力机制对信道相关性的建模能力。已在仿真环境中验证，准备进行实际部署测试。',
+          category: 'AI通信',
+          time: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          tags: ['MIMO', '信道估计', '深度学习', 'Transformer', '算法优化'],
+          likes: 56,
+          liked: false,
+          bookmarked: false,
+          bookmarks: 8,
+          comments: 12,
+          views: 187,
+          showComments: false,
+          newComment: '',
+          commentsList: [],
+          codeSnippet: `class ChannelEstimationTransformer(nn.Module):
+    def __init__(self, d_model=256, nhead=8, num_layers=6):
+        super().__init__()
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(d_model, nhead),
+            num_layers
+        )
+        self.position_encoding = PositionalEncoding(d_model)
+    
+    def forward(self, pilot_signals):
+        # 输入: [batch, seq_len, features]
+        x = self.position_encoding(pilot_signals)
+        channel_est = self.encoder(x)
+        return channel_est`,
+          codeLanguage: 'python',
+          isNew: false
+        }
+      ],
+      
+      newPost: {
+        title: '',
+        content: '',
+        category: '技术问答',
+        tags: []
+      },
+      
+      // 通信知识动态
+      communicationResources: [],
+      
+      notifications: [
+        { id: 1, icon: 'fas fa-thumbs-up', message: '有人点赞了你的帖子', time: '2分钟前', read: false },
+        { id: 2, icon: 'fas fa-comment', message: '你的帖子收到了新回复', time: '15分钟前', read: false },
+        { id: 3, icon: 'fas fa-user-plus', message: '3个新用户关注了你', time: '1小时前', read: true }
+      ]
+    };
   },
-  {
-    id: 3,
-    author: '王芳',
-    authorInitials: 'WF',
-    title: '数据科学家 | 研究员',
-    time: '1天前',
-    postTitle: '通信数据可视化分析实践',
-    content: '使用现代可视化工具对通信网络数据进行深度分析，发现隐藏的模式和趋势。',
-    tags: ['数据可视化', '通信', '数据分析'],
-    likes: 12,
-    liked: false,
-    category: '数据分析'
-  }
-])
-
-// 分类数据
-const categories = ref(['深度学习', '通信技术', '信号处理', 'AI算法', '数据分析'])
-const selectedCategory = ref('')
-
-// 过滤帖子
-const filteredPosts = computed(() => {
-  if (!selectedCategory.value) return posts.value
-  return posts.value.filter(post => 
-    post.category === selectedCategory.value || 
-    post.tags.includes(selectedCategory.value)
-  )
-})
-
-// 点赞功能
-const toggleLike = (post) => {
-  if (post.liked) {
-    post.likes--
-  } else {
-    post.likes++
-  }
-  post.liked = !post.liked
   
-  // 添加简单的动画效果
-  const button = event?.target
-  const likeBtn = button.closest('.like-btn')
-  if (likeBtn) {
-    likeBtn.style.transform = 'scale(1.2)'
-    setTimeout(() => {
-      likeBtn.style.transform = 'scale(1)'
-    }, 200)
-  }
-}
-
-// 删除帖子功能
-const deletePost = (postId) => {
-  if (confirm('确定要删除这篇帖子吗？')) {
-    const index = posts.value.findIndex(post => post.id === postId)
-    if (index !== -1) {
-      posts.value.splice(index, 1)
+  computed: {
+    filteredPosts() {
+      let filtered = this.posts;
+      
+      // 分类筛选
+      if (this.selectedCategory) {
+        filtered = filtered.filter(post => 
+          post.category === this.selectedCategory || 
+          post.tags.includes(this.selectedCategory)
+        );
+      }
+      
+      // 搜索筛选
+      if (this.searchQuery) {
+        const query = this.searchQuery.toLowerCase();
+        filtered = filtered.filter(post => 
+          post.title.toLowerCase().includes(query) ||
+          post.content.toLowerCase().includes(query) ||
+          post.tags.some(tag => tag.toLowerCase().includes(query)) ||
+          post.author.toLowerCase().includes(query)
+        );
+      }
+      
+      return filtered;
+    },
+    
+    sortedPosts() {
+      const posts = [...this.filteredPosts];
+      
+      switch (this.postsSort) {
+        case 'hottest':
+          return posts.sort((a, b) => b.likes - a.likes);
+        case 'commented':
+          return posts.sort((a, b) => b.comments - a.comments);
+        case 'newest':
+        default:
+          return posts.sort((a, b) => new Date(b.time) - new Date(a.time));
+      }
+    },
+    
+    filteredResources() {
+      if (!this.selectedCategory) {
+        return this.communicationResources;
+      }
+      return this.communicationResources.filter(resource => 
+        resource.type === this.selectedCategory || 
+        resource.tags?.some(tag => tag === this.selectedCategory)
+      );
+    },
+    
+    featuredResources() {
+      return this.communicationResources.slice(0, 3);
+    },
+    
+    unreadNotifications() {
+      return this.notifications.filter(n => !n.read).length;
     }
+  },
+  
+  methods: {
+    formatRelativeTime(dateString) {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) return '刚刚';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}分钟前`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}小时前`;
+      if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}天前`;
+      
+      return date.toLocaleDateString('zh-CN');
+    },
+    
+    performSearch() {
+      console.log('搜索通信技术:', this.searchQuery);
+    },
+    
+    toggleLike(post) {
+      post.liked = !post.liked;
+      post.likes += post.liked ? 1 : -1;
+      
+      if (post.liked) {
+        this.addNotification('fas fa-thumbs-up', `有人点赞了你的帖子：${post.title}`);
+      }
+    },
+    
+    toggleBookmark(post) {
+      post.bookmarked = !post.bookmarked;
+      post.bookmarks = post.bookmarked ? (post.bookmarks || 0) + 1 : Math.max(0, (post.bookmarks || 1) - 1);
+    },
+    
+    toggleComments(post) {
+      post.showComments = !post.showComments;
+    },
+    
+    deletePost(postId) {
+      if (confirm('确定删除这个帖子吗？删除后无法恢复。')) {
+        const index = this.posts.findIndex(p => p.id === postId);
+        if (index > -1) {
+          this.posts.splice(index, 1);
+          this.addNotification('fas fa-trash-alt', '你删除了一篇帖子');
+        }
+      }
+    },
+    
+    editPost(post) {
+      this.newPost = {
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        tags: [...post.tags]
+      };
+      this.showPublishModal = true;
+      
+      // 标记为编辑模式
+      this.editingPostId = post.id;
+    },
+    
+    publishPost() {
+      if (this.editingPostId) {
+        // 编辑现有帖子
+        const index = this.posts.findIndex(p => p.id === this.editingPostId);
+        if (index > -1) {
+          this.posts[index] = {
+            ...this.posts[index],
+            title: this.newPost.title,
+            content: this.newPost.content,
+            category: this.newPost.category,
+            tags: this.newPost.tags,
+            time: new Date().toISOString()
+          };
+        }
+        this.editingPostId = null;
+      } else {
+        // 发布新帖子
+        const newPost = {
+          id: Date.now(),
+          author: '用户',
+          authorInitials: '你',
+          authorColor: '#a855f7',
+          title: this.newPost.title,
+          content: this.newPost.content,
+          category: this.newPost.category,
+          time: new Date().toISOString(),
+          tags: this.newPost.tags,
+          likes: 0,
+          liked: false,
+          bookmarked: false,
+          bookmarks: 0,
+          comments: 0,
+          views: 0,
+          showComments: false,
+          newComment: '',
+          commentsList: [],
+          isNew: true
+        };
+        
+        this.posts.unshift(newPost);
+      }
+      
+      this.showPublishModal = false;
+      this.resetNewPost();
+      this.addNotification('fas fa-check-circle', '帖子发布成功！');
+    },
+    
+    publishQuickPost() {
+      if (!this.quickPostContent.trim()) return;
+      
+      const newPost = {
+        id: Date.now(),
+        author: '用户',
+        authorInitials: '你',
+        authorColor: '#a855f7',
+        title: this.quickPostTitle || '技术分享',
+        content: this.quickPostContent,
+        category: '技术问答',
+        time: new Date().toISOString(),
+        tags: ['快速分享'],
+        likes: 0,
+        liked: false,
+        bookmarked: false,
+        bookmarks: 0,
+        comments: 0,
+        views: 0,
+        showComments: false,
+        newComment: '',
+        commentsList: [],
+        isNew: true
+      };
+      
+      this.posts.unshift(newPost);
+      this.resetQuickPost();
+      this.addNotification('fas fa-check-circle', '快速帖子发布成功！');
+    },
+    
+    cancelQuickPost() {
+      this.resetQuickPost();
+    },
+    
+    resetQuickPost() {
+      this.quickPostTitle = '';
+      this.quickPostContent = '';
+      this.showQuickPostOptions = false;
+    },
+    
+    resetNewPost() {
+      this.newPost = {
+        title: '',
+        content: '',
+        category: '技术问答',
+        tags: []
+      };
+      this.newTagInput = '';
+    },
+    
+    addTagToQuickPost(tag) {
+      if (!this.quickPostContent.includes(`#${tag}`)) {
+        this.quickPostContent += ` #${tag}`;
+      }
+    },
+    
+    addNewTag() {
+      if (this.newTagInput.trim() && !this.newPost.tags.includes(this.newTagInput.trim())) {
+        this.newPost.tags.push(this.newTagInput.trim());
+        this.newTagInput = '';
+      }
+    },
+    
+    addSuggestedTag(tag) {
+      if (!this.newPost.tags.includes(tag)) {
+        this.newPost.tags.push(tag);
+      }
+    },
+    
+    removeTag(tag) {
+      this.newPost.tags = this.newPost.tags.filter(t => t !== tag);
+    },
+    
+    filterByTag(tag) {
+      this.selectedCategory = '';
+      this.searchQuery = tag;
+    },
+    
+    addComment(post) {
+      if (!post.newComment.trim()) return;
+      
+      const newComment = {
+        id: Date.now(),
+        author: '评论用户',
+        authorInitials: 'CU',
+        text: post.newComment,
+        time: '刚刚',
+        likes: 0
+      };
+      
+      post.commentsList.push(newComment);
+      post.comments++;
+      post.newComment = '';
+      
+      this.addNotification('fas fa-comment', '你的帖子收到了新评论');
+    },
+    
+    likeComment(comment) {
+      comment.likes = (comment.likes || 0) + 1;
+    },
+    
+    replyToComment(comment, post) {
+      post.newComment = `回复 ${comment.author}: `;
+      if (!post.showComments) {
+        post.showComments = true;
+      }
+    },
+    
+    sharePost(post) {
+      const shareUrl = `${window.location.origin}/post/${post.id}`;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('帖子链接已复制到剪贴板！');
+        this.addNotification('fas fa-share', '你分享了一篇帖子');
+      });
+    },
+    
+    shareResource(resource) {
+      navigator.clipboard.writeText(resource.url).then(() => {
+        alert('资源链接已复制到剪贴板！');
+      });
+    },
+    
+    saveResource(resource) {
+      alert(`已收藏：${resource.title}`);
+      this.addNotification('fas fa-bookmark', `你收藏了：${resource.title}`);
+    },
+    
+    copyCode(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        alert('代码已复制到剪贴板！');
+      });
+    },
+    
+    viewImage(image) {
+      this.viewingImage = image;
+    },
+    
+    insertCodeBlock() {
+      this.newPost.content += '\n```python\n# 在这里输入你的代码\n```\n';
+    },
+    
+    insertLink() {
+      this.newPost.content += '\n[链接描述](链接地址)\n';
+    },
+    
+    triggerImageUpload() {
+      alert('图片上传功能（演示）');
+      // 实际项目中这里会触发文件上传
+    },
+    
+    loadMorePosts() {
+      // 模拟加载更多帖子
+      const newPosts = [
+        {
+          id: Date.now() + 1,
+          author: '网络优化师',
+          authorInitials: 'NO',
+          authorColor: '#3b82f6',
+          title: '毫米波通信中的波束管理优化实践',
+          content: '在5G毫米波部署中，波束管理是关键挑战。我们通过智能波束选择算法和机器学习预测，将波束训练时间减少了60%。分享具体的实现方法和测试结果。',
+          category: '5G技术',
+          time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          tags: ['毫米波', '波束管理', '5G优化', '机器学习'],
+          likes: 34,
+          liked: false,
+          bookmarked: false,
+          bookmarks: 7,
+          comments: 6,
+          views: 124,
+          showComments: false,
+          newComment: '',
+          commentsList: [],
+          isNew: false
+        }
+      ];
+      
+      this.posts.push(...newPosts);
+      this.hasMorePosts = this.posts.length < 10; // 模拟限制
+    },
+    
+    toggleTheme() {
+      this.isDarkTheme = !this.isDarkTheme;
+      document.body.classList.toggle('light-theme', !this.isDarkTheme);
+      localStorage.setItem('theme', this.isDarkTheme ? 'dark' : 'light');
+    },
+    
+    toggleNotifications() {
+      this.showNotifications = !this.showNotifications;
+    },
+    
+    markAllAsRead() {
+      this.notifications.forEach(notification => {
+        notification.read = true;
+      });
+    },
+    
+    addNotification(icon, message) {
+      this.notifications.unshift({
+        id: Date.now(),
+        icon,
+        message,
+        time: '刚刚',
+        read: false
+      });
+    },
+    
+    // 获取通信知识动态
+    async fetchCommunicationResources() {
+      this.loading = true;
+      
+      try {
+        // 模拟API调用
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 模拟数据
+        this.communicationResources = [
+          {
+            id: 1,
+            title: '华为发布5G-A通感算一体白皮书',
+            description: '华为发布5G-A通感算一体化技术白皮书，提出AI原生网络架构，支持通信、感知、计算一体化服务',
+            type: '5G技术',
+            pubDate: new Date().toISOString(),
+            source: '华为官方',
+            url: 'https://www.huawei.com',
+            tags: ['5G-A', '通感算一体', '白皮书']
+          },
+          {
+            id: 2,
+            title: '6G太赫兹通信技术取得重要突破',
+            description: '国内科研团队在太赫兹通信领域实现100Gbps单载波传输速率，为6G空天地一体化网络提供技术支撑',
+            type: '6G前沿',
+            pubDate: new Date(Date.now() - 86400000).toISOString(),
+            source: '中科院',
+            url: 'https://www.cas.cn',
+            tags: ['6G', '太赫兹', '通信突破']
+          },
+          {
+            id: 3,
+            title: '基于深度学习的无线信号识别技术',
+            description: '最新研究提出基于深度学习的无线信号自动识别算法，在复杂电磁环境中识别准确率达到95%',
+            type: 'AI通信',
+            pubDate: new Date(Date.now() - 172800000).toISOString(),
+            source: 'IEEE期刊',
+            url: 'https://www.ieee.org',
+            tags: ['深度学习', '信号识别', 'AI算法']
+          },
+          {
+            id: 4,
+            title: 'Open RAN在5G网络中的应用实践',
+            description: '多家运营商联合发布Open RAN部署白皮书，分享在现网中部署Open RAN的经验和挑战',
+            type: '无线通信',
+            pubDate: new Date(Date.now() - 259200000).toISOString(),
+            source: 'GSMA',
+            url: 'https://www.gsma.com',
+            tags: ['Open RAN', '5G网络', '开源']
+          }
+        ];
+        
+      } catch (error) {
+        console.error('获取通信知识动态失败:', error);
+        this.error = '获取动态失败，请稍后重试';
+      } finally {
+        this.loading = false;
+      }
+    }
+  },
+  
+  mounted() {
+    // 初始化主题
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    this.isDarkTheme = savedTheme === 'dark';
+    document.body.classList.toggle('light-theme', !this.isDarkTheme);
+    
+    // 获取通信知识动态
+    this.fetchCommunicationResources();
+    
+    // 轮播自动播放
+    setInterval(() => {
+      if (this.featuredResources.length > 0) {
+        this.currentSlide = (this.currentSlide + 1) % this.featuredResources.length;
+      }
+    }, 5000);
+    
+    console.log('通信技术社区已初始化');
   }
-}
-
-// 发布新帖子
-const showPublishModal = ref(false)
-const newPost = ref({
-  title: '',
-  content: '',
-  tagsInput: ''
-})
-
-const publishPost = () => {
-  const tags = newPost.value.tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag)
-  
-  posts.value.unshift({
-    id: Date.now(), // 使用时间戳作为ID
-    author: currentUser.value,
-    authorInitials: currentUser.value,
-    title: '社区用户',
-    time: '刚刚',
-    postTitle: newPost.value.title,
-    content: newPost.value.content,
-    tags: tags,
-    likes: 0,
-    liked: false,
-    category: tags[0] || '其他'
-  })
-  
-  // 重置表单
-  newPost.value = {
-    title: '',
-    content: '',
-    tagsInput: ''
-  }
-  
-  showPublishModal.value = false
-}
+};
 </script>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-}
-
+/* 基础样式 */
 .community-view {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1f35 0%, #2d3748 100%);
-  color: #e2e8f0;
-  line-height: 1.6;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f1f5f9;
+  font-family: 'Inter', 'PingFang SC', sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body.light-theme .community-view {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #334155;
 }
 
 .container {
@@ -277,502 +1131,1609 @@ const publishPost = () => {
   padding: 0 20px;
 }
 
-header {
-  background: rgba(26, 32, 44, 0.95);
+/* 头部样式 */
+.community-header {
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
-  color: white;
-  padding: 20px 0;
-  /* padding: 20px 0;. */
-  border-bottom: 1px solid #4a5568;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+body.light-theme .community-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .header-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 15px 0;
+  gap: 20px;
 }
 
 .logo {
   display: flex;
   align-items: center;
+  gap: 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #a855f7;
+  white-space: nowrap;
 }
 
-.logo h1 {
-  font-size: 24px;
-  font-weight: 600;
-  margin-left: 10px;
-  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.logo i {
+  font-size: 1.8rem;
 }
 
-.logo-icon {
-  font-size: 28px;
-  font-weight: bold;
-  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
-  color: white;
-  width: 40px;
-  height: 40px;
+.header-search {
+  flex: 1;
+  max-width: 600px;
+  position: relative;
+}
+
+.header-search input {
+  width: 100%;
+  padding: 12px 20px;
+  padding-right: 50px;
+  border-radius: 25px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(30, 41, 59, 0.8);
+  color: #f1f5f9;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+body.light-theme .header-search input {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.header-search input:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+
+.search-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #a855f7;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 8px;
   border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.notification-btn:hover {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: white;
+  font-size: 12px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 4px;
 }
 
-.user-info {
+.publish-btn {
   display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: 500;
 }
 
-.user-avatar {
+/* 社区导航 */
+.community-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .community-nav {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.category-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.category-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 25px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+body.light-theme .category-tab {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #64748b;
+}
+
+.category-tab:hover {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.category-tab.active {
+  background: #a855f7;
+  color: white;
+  border-color: #a855f7;
+}
+
+.category-tab i {
+  font-size: 14px;
+}
+
+.theme-btn {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #a855f7;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10px;
-  color: white;
-  font-weight: bold;
+  transition: all 0.3s;
 }
 
+.theme-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  transform: rotate(30deg);
+}
+
+/* 主要内容区域 */
 .main-content {
-  display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 20px;
-  margin-top: 30px;
+  padding: 30px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
 }
 
-.sidebar {
-  background: rgba(26, 32, 44, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #4a5568;
-  box-shadow: 0 4px 15px rgba(126, 34, 206, 0.3);
+/* 通信知识轮播 */
+.knowledge-carousel {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
 }
 
-.sidebar h2 {
-  font-size: 18px;
-  margin-bottom: 15px;
+.carousel-container {
+  position: relative;
+  height: 320px;
+}
+
+.carousel-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  padding: 40px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(99, 102, 241, 0.1));
+}
+
+.carousel-slide.active {
+  opacity: 1;
+}
+
+.slide-badge {
+  display: inline-block;
+  background: rgba(168, 85, 247, 0.3);
   color: #a855f7;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #4a5568;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  margin-bottom: 20px;
 }
 
-.nav-menu {
-  list-style: none;
+.slide-content h3 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: white;
 }
 
-.nav-menu li {
-  margin-bottom: 12px;
+.slide-content p {
+  color: #cbd5e1;
+  margin-bottom: 25px;
+  line-height: 1.6;
+  font-size: 15px;
 }
 
-/* 核心样式：hover时才显示边框 */
-.nav-menu a {
+.slide-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(168, 85, 247, 0.3);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.dot.active {
+  background: #a855f7;
+  transform: scale(1.2);
+}
+
+/* 通信知识动态 */
+.knowledge-dynamics {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 16px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dynamics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-title {
   display: flex;
   align-items: center;
-  padding: 12px 15px;
-  color: #d8b4fe;
-  text-decoration: none;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #a855f7;
+}
+
+.section-title i {
+  font-size: 22px;
+}
+
+.view-options {
+  display: flex;
+  gap: 8px;
+}
+
+.view-btn {
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #a855f7;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  transition: all 0.3s ease;
   cursor: pointer;
-  border: 1px solid transparent; /* 默认透明边框，避免hover跳动 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
 }
 
-/* 鼠标停留时显示边框和背景变化 */
-.nav-menu a:hover {
-  background: rgba(126, 34, 206, 0.2);
-  color: #f3e8ff;
-  border-color: #a855f7; /* hover时才显示边框 */
-  transform: translateX(5px);
+.view-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
 }
 
-/* 激活状态：只改变背景和文字，不显示边框 */
-.nav-menu a.active {
-  background: rgba(126, 34, 206, 0.3);
-  color: #f3e8ff;
+.view-btn.active {
+  background: #a855f7;
+  color: white;
+}
+
+.resources-container {
+  display: grid;
+  gap: 20px;
+}
+
+.resources-container.grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.resources-container.list {
+  grid-template-columns: 1fr;
+}
+
+.knowledge-card {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+}
+
+body.light-theme .knowledge-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.knowledge-card:hover {
+  border-color: #a855f7;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(168, 85, 247, 0.2);
+}
+
+.knowledge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.knowledge-type {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 12px;
   font-weight: 500;
-  border-color: #7e22ce;
 }
 
-.nav-icon {
-  margin-right: 10px;
-  font-size: 18px;
+.knowledge-time {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
-.content {
+.knowledge-body h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #f1f5f9;
+  line-height: 1.3;
+}
+
+body.light-theme .knowledge-body h4 {
+  color: #334155;
+}
+
+.knowledge-body p {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 15px;
+}
+
+.knowledge-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.knowledge-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.knowledge-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.knowledge-source {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.knowledge-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.knowledge-link {
+  color: #a855f7;
+  text-decoration: none;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s;
+}
+
+.knowledge-link:hover {
+  color: #d8b4fe;
+  gap: 8px;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.action-btn:hover {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+/* 社区帖子区域 */
+.community-posts {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 16px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.posts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.posts-count {
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: normal;
+  margin-left: 5px;
+}
+
+.posts-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sort-select {
+  padding: 8px 15px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+body.light-theme .sort-select {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+}
+
+/* 快速发帖卡片 */
+.quick-post-card {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  margin-bottom: 25px;
+  transition: all 0.3s;
+}
+
+.quick-post-card:hover {
+  border-color: #a855f7;
+  box-shadow: 0 5px 15px rgba(168, 85, 247, 0.2);
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.author-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-right: 15px;
+}
+
+.post-input-area {
+  width: 100%;
+}
+
+.post-title-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
+  font-size: 15px;
+  margin-bottom: 12px;
+  transition: all 0.3s;
+}
+
+body.light-theme .post-title-input {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+}
+
+.post-title-input:focus {
+  outline: none;
+  border-color: #a855f7;
+}
+
+.post-content-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
+  font-size: 14px;
+  min-height: 100px;
+  resize: vertical;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+body.light-theme .post-content-input {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+}
+
+.post-content-input:focus {
+  outline: none;
+  border-color: #a855f7;
+}
+
+.post-options {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.option-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.quick-tag {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.quick-tag:hover {
+  background: rgba(168, 85, 247, 0.2);
+  transform: translateY(-2px);
+}
+
+.option-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* 帖子列表 */
+.posts-list {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-.category-selector {
-  background: rgba(26, 32, 44, 0.8);
-  border-radius: 12px;
-  padding: 15px 20px;
-  border: 1px solid #4a5568;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 15px rgba(126, 34, 206, 0.3);
-}
-
-.category-selector select {
-  padding: 10px 15px;
-  border: 1px solid #4a5568;
-  border-radius: 8px;
-  background: #2d3748;
-  color: #e2e8f0;
-  width: 200px;
-  font-size: 14px;
-}
-
-.category-selector select:focus {
-  outline: none;
-  border-color: #a855f7;
-  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
-}
-
-.publish-btn {
-  background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%);
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(126, 34, 206, 0.4);
-}
-
-.publish-btn:hover {
-  background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(126, 34, 206, 0.5);
-}
-
 .post-card {
-  background: rgba(26, 32, 44, 0.8);
+  background: rgba(15, 23, 42, 0.5);
   border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #4a5568;
-  position: relative;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(126, 34, 206, 0.3);
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+}
+
+body.light-theme .post-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .post-card:hover {
   border-color: #a855f7;
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(168, 85, 247, 0.2);
 }
 
-.post-header {
+.post-card.new-post {
+  border-color: #a855f7;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(168, 85, 247, 0.1));
+}
+
+.post-card.hot-post {
+  border-color: #f59e0b;
+}
+
+.post-card-header {
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 20px;
 }
 
-.author-avatar {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+.post-author-info {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  font-weight: bold;
-  color: white;
-  border: 2px solid rgba(168, 85, 247, 0.5);
-  font-size: 16px;
+  gap: 15px;
 }
 
-.author-info {
-  flex: 1;
+.author-details {
+  display: flex;
+  flex-direction: column;
 }
 
 .author-name {
   font-weight: 600;
   font-size: 16px;
-  color: #d8b4fe;
+  color: #f1f5f9;
   margin-bottom: 4px;
 }
 
-.author-title {
-  font-size: 13px;
-  color: #a0aec0;
+body.light-theme .author-name {
+  color: #334155;
 }
 
-.post-time {
-  font-size: 13px;
+.post-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.post-category {
+  background: rgba(168, 85, 247, 0.1);
   color: #a855f7;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 500;
 }
 
-.post-content {
+.post-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.post-actions-top {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  color: #3b82f6;
+}
+
+.edit-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+}
+
+.delete-btn {
+  color: #ef4444;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+.post-card-body {
   margin-bottom: 20px;
 }
 
 .post-title {
   font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #f3e8ff;
-  line-height: 1.4;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 15px;
+  line-height: 1.3;
 }
 
-.post-text {
-  color: #cbd5e0;
-  margin-bottom: 18px;
-  line-height: 1.7;
+body.light-theme .post-title {
+  color: #334155;
+}
+
+.post-content {
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin-bottom: 20px;
   font-size: 15px;
+}
+
+body.light-theme .post-content {
+  color: #64748b;
+}
+
+.post-code {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.code-language {
+  color: #a855f7;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.copy-code-btn {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+
+.copy-code-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  transform: translateY(-2px);
+}
+
+.post-code pre {
+  margin: 0;
+  overflow-x: auto;
+}
+
+.post-code code {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.5;
+}
+
+.post-images {
+  margin: 16px 0;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.image-item {
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-item:hover {
+  transform: scale(1.05);
+  border-color: #a855f7;
+}
+
+.image-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
 }
 
 .post-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-top: 20px;
 }
 
-.tag {
-  background: rgba(126, 34, 206, 0.3);
-  color: #e2e8f0;
+.post-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
   padding: 6px 12px;
-  border-radius: 20px;
+  border-radius: 15px;
   font-size: 12px;
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  font-weight: 500;
+  cursor: pointer;
   transition: all 0.3s;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-.tag:hover {
-  background: rgba(168, 85, 247, 0.4);
-  transform: scale(1.05);
+.post-tag:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
 }
 
-.post-actions {
+.post-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #4a5568;
-  padding-top: 18px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.like-btn {
+.post-stats {
+  display: flex;
+  gap: 15px;
+}
+
+.stat-btn {
   display: flex;
   align-items: center;
-  background: none;
-  border: none;
-  color: #a855f7;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  padding: 8px 16px;
+  border-radius: 20px;
   cursor: pointer;
   transition: all 0.3s;
-  padding: 8px 16px;
-  border-radius: 8px;
   font-size: 14px;
 }
 
-.like-btn:hover {
-  color: #f3e8ff;
-  background: rgba(168, 85, 247, 0.2);
-  transform: scale(1.05);
+body.light-theme .stat-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #64748b;
 }
 
-.like-count {
-  margin-left: 8px;
+.stat-btn:hover {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.stat-btn.liked {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.stat-btn.bookmarked {
+  color: #f59e0b;
+}
+
+.stat-btn.bookmarked:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.stat-count {
   font-weight: 500;
-}
-
-.comment-btn {
-  color: #a855f7;
-  text-decoration: none;
-  transition: all 0.3s;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  border: 1px solid transparent;
-}
-
-.comment-btn:hover {
-  color: #f3e8ff;
-  background: rgba(168, 85, 247, 0.2);
-  border-color: #7e22ce;
-}
-
-.delete-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: none;
-  border: none;
-  color: #a855f7;
-  cursor: pointer;
-  font-size: 22px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-}
-
-.delete-btn:hover {
-  color: #f3e8ff;
-  background: rgba(168, 85, 247, 0.3);
-  transform: scale(1.1);
-}
-
-/* 模态框样式 */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: rgba(26, 32, 44, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 30px;
-  width: 90%;
-  max-width: 500px;
-  border: 1px solid #4a5568;
-  box-shadow: 0 10px 30px rgba(126, 34, 206, 0.4);
-}
-
-.modal-content h3 {
-  margin-bottom: 24px;
-  color: #d8b4fe;
-  font-size: 22px;
+  min-width: 16px;
   text-align: center;
 }
 
-.form-group {
+.post-views {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* 评论区域 */
+.post-comments {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.comment-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
   margin-bottom: 20px;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  color: #d8b4fe;
+.comment-author-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #34d399);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.comment-input-wrapper {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+}
+
+.comment-input-wrapper input {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
   font-size: 14px;
 }
 
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #4a5568;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #2d3748;
-  color: #e2e8f0;
-  transition: all 0.3s;
-  resize: vertical;
+body.light-theme .comment-input-wrapper input {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.comment-input-wrapper input:focus {
   outline: none;
   border-color: #a855f7;
-  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
+}
+
+.btn-small {
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.comment-item {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .comment-item {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.comment-content {
+  flex: 1;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.comment-author {
+  font-weight: 600;
+  font-size: 14px;
+  color: #f1f5f9;
+}
+
+body.light-theme .comment-author {
+  color: #334155;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.comment-text {
+  color: #cbd5e1;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+body.light-theme .comment-text {
+  color: #64748b;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 15px;
+}
+
+.comment-action-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s;
+}
+
+.comment-action-btn:hover {
+  color: #a855f7;
+}
+
+/* 加载更多 */
+.load-more {
+  text-align: center;
+  padding: 30px 0;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #c084fc, #a855f7);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(168, 85, 247, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.light-theme .btn-secondary {
+  background: rgba(0, 0, 0, 0.05);
+  color: #64748b;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: #a855f7;
+  border: 1px solid #a855f7;
+}
+
+.btn-outline:hover {
+  background: rgba(168, 85, 247, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+body.light-theme .modal-content {
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-header h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #a855f7;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+
+.modal-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.publish-form {
+  padding: 30px;
+}
+
+.form-section {
+  margin-bottom: 25px;
+}
+
+.form-section label {
+  display: block;
+  font-weight: 500;
+  color: #a855f7;
+  margin-bottom: 10px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-section input,
+.form-section textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  background: rgba(15, 23, 42, 0.5);
+  color: #f1f5f9;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+body.light-theme .form-section input,
+body.light-theme .form-section textarea {
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+}
+
+.form-section input:focus,
+.form-section textarea:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2);
+}
+
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.post-editor textarea {
+  min-height: 200px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.editor-tools {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tool-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  transform: translateY(-2px);
+}
+
+.category-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.category-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px;
+  border: 2px solid rgba(168, 85, 247, 0.2);
+  border-radius: 12px;
+  background: rgba(168, 85, 247, 0.05);
+  color: #a855f7;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.category-option:hover {
+  background: rgba(168, 85, 247, 0.1);
+  border-color: rgba(168, 85, 247, 0.4);
+}
+
+.category-option.selected {
+  background: #a855f7;
+  color: white;
+  border-color: #a855f7;
+}
+
+.category-option i {
+  font-size: 20px;
+}
+
+.category-option span {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tags-editor {
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.3);
+}
+
+body.light-theme .tags-editor {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.selected-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.selected-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 13px;
+}
+
+.remove-tag-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+.tag-input-wrapper {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tag-input-wrapper input {
+  flex: 1;
+}
+
+.suggested-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggested-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.suggested-tag:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: translateY(-2px);
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 15px;
+  margin-top: 30px;
 }
 
-.form-actions button {
-  padding: 10px 20px;
+/* 图片查看器 */
+.image-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.image-viewer-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+}
+
+.close-viewer {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s;
-  font-size: 14px;
-}
-
-.form-actions button[type="button"] {
-  background: rgba(126, 34, 206, 0.2);
-  color: #d8b4fe;
-  border: 1px solid #4a5568;
-}
-
-.form-actions button[type="button"]:hover {
-  background: rgba(168, 85, 247, 0.3);
-  color: #f3e8ff;
-}
-
-.form-actions button[type="submit"] {
-  background: linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%);
   color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.3s;
 }
 
-.form-actions button[type="submit"]:hover {
-  background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(126, 34, 206, 0.4);
+.close-viewer:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
 }
 
-/* 响应式调整，确保小屏幕也能正常显示 */
+.image-viewer-content img {
+  max-width: 100%;
+  max-height: calc(90vh - 50px);
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .category-selection {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
-  .main-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .sidebar {
-    display: block; /* 小屏幕也显示侧边栏 */
-    margin-bottom: 20px;
-  }
-  
   .header-content {
     flex-direction: column;
     gap: 15px;
   }
   
-  .category-selector {
-    flex-direction: column;
-    gap: 12px;
-    align-items: stretch;
-  }
-  
-  .category-selector select {
+  .header-search {
+    max-width: 100%;
+    order: 3;
     width: 100%;
   }
   
-  .post-card {
-    padding: 20px;
+  .community-nav {
+    flex-direction: column;
+    gap: 15px;
   }
   
-  .post-header {
+  .category-tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  
+  .carousel-slide {
+    padding: 30px 20px;
+  }
+  
+  .slide-content h3 {
+    font-size: 20px;
+  }
+  
+  .dynamics-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 15px;
   }
   
-  .author-info {
-    width: 100%;
-  }
-  
-  .post-time {
+  .view-options {
     align-self: flex-end;
+  }
+  
+  .resources-container.grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .posts-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .posts-filter {
+    align-self: flex-end;
+  }
+  
+  .post-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .post-actions-top {
+    align-self: flex-end;
+  }
+  
+  .post-stats {
+    flex-wrap: wrap;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+  
+  .category-selection {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 15px;
+  }
+  
+  .carousel-container {
+    height: 280px;
+  }
+  
+  .slide-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .knowledge-card,
+  .post-card,
+  .quick-post-card {
+    padding: 20px 15px;
+  }
+  
+  .post-stats {
+    gap: 10px;
+  }
+  
+  .stat-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
   }
 }
 </style>
