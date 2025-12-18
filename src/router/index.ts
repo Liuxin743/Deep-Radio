@@ -75,11 +75,6 @@ const router = createRouter({
         // 延迟导入+获取Pinia，避免初始化问题
         const { useAuthStore } = await import('../stores/auth.js');
         const authStore = useAuthStore();
-<<<<<<< HEAD
-=======
-        
-        // 已登录用户访问登录页 → 跳首页
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
         if (authStore.isAuthenticated) {
           return { name: 'home' };
         }
@@ -89,7 +84,6 @@ const router = createRouter({
       path: '/user-management',
       name: 'user-management',
       component: UserManagement,
-<<<<<<< HEAD
       beforeEnter: (to, from) => {
         const authStore = useAuthStore();
         // 优化：非管理员禁止访问
@@ -99,43 +93,15 @@ const router = createRouter({
         if (authStore.user?.role !== 'admin') {
           return { name: 'home' };
         }
-=======
-      beforeEnter: async (to, from) => {
-        const { useAuthStore } = await import('../stores/auth.js');
-        const authStore = useAuthStore();
-        
-        // 1. 未登录 → 跳登录页
-        if (!authStore.isAuthenticated) {
-          return { name: 'login' };
-        }
-        
-        // 2. 非管理员 → 跳首页
-        if (authStore.user?.role !== 'admin') {
-          return { name: 'home' };
-        }
-        
-        // 3. 访问前清空残留的用户管理数据（双重保障）
-        authStore.userList = [];
-        authStore.showAddUserModal = false;
-        authStore.editingUser = null;
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
       }
     },
     {
       path: '/profile',
       name: 'profile',
       component: ProfileView,
-<<<<<<< HEAD
       beforeEnter: (to, from) => {
         const authStore = useAuthStore();
         // 未登录用户禁止访问，自动跳登录页
-=======
-      beforeEnter: async (to, from) => {
-        const { useAuthStore } = await import('../stores/auth.js');
-        const authStore = useAuthStore();
-        
-        // 未登录 → 跳登录页
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
         if (!authStore.isAuthenticated) {
           return { name: 'login' };
         }
@@ -144,24 +110,4 @@ const router = createRouter({
   ]
 });
 
-<<<<<<< HEAD
-=======
-// 退出后（跳登录页）清空所有用户管理数据
-router.afterEach(async (to) => {
-  if (to.name === 'login') {
-    try {
-      const { useAuthStore } = await import('../stores/auth.js');
-      const authStore = useAuthStore();
-      
-      // 清空用户管理相关状态
-      authStore.userList = [];
-      authStore.showAddUserModal = false;
-      authStore.editingUser = null;
-    } catch (e) {
-      console.warn('清空用户管理数据失败：', e);
-    }
-  }
-});
-
->>>>>>> d623a64 (彻底移除HF Token硬编码：README.md+GenerativeModel.vue，改用后端代理)
 export default router;

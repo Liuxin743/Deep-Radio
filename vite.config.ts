@@ -37,7 +37,18 @@ export default defineConfig({
         target: 'https://api.semanticscholar.org/v1',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/semantic/, '')
-      }
+      },
+      '/hf-api': {
+        target: 'https://api-inference.huggingface.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/hf-api/, ''),
+        // 允许更大的请求体
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+        }
+      },
     }
   }
 })
