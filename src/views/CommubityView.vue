@@ -29,6 +29,10 @@
             <button class="btn btn-primary publish-btn" @click="showPublishModal = true">
               <i class="fas fa-plus"></i> 发帖子
             </button>
+            <button class="btn btn-secondary refresh-btn" @click="refreshNews" :disabled="refreshing">
+              <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+              {{ refreshing ? '更新中...' : '刷新资讯' }}
+            </button>
           </div>
         </div>
       </div>
@@ -64,7 +68,7 @@
       <!-- 主要内容区域 -->
       <div class="main-content">
         <!-- 通信知识动态轮播 -->
-        <div v-if="communicationResources.length > 0 && !selectedCategory" class="knowledge-carousel">
+        <div v-if="featuredResources.length > 0 && !selectedCategory" class="knowledge-carousel">
           <div class="carousel-container">
             <div 
               v-for="(resource, index) in featuredResources" 
@@ -76,6 +80,10 @@
                 <div class="slide-badge">{{ resource.type }}</div>
                 <h3>{{ resource.title }}</h3>
                 <p>{{ resource.description }}</p>
+                <div class="slide-meta">
+                  <span class="slide-source">{{ resource.source }}</span>
+                  <span class="slide-time">{{ formatRelativeTime(resource.pubDate) }}</span>
+                </div>
                 <div class="slide-actions">
                   <a :href="resource.url" target="_blank" class="btn btn-outline">
                     查看详情 <i class="fas fa-arrow-right"></i>
@@ -103,6 +111,9 @@
           <div class="dynamics-header">
             <h3 class="section-title">
               <i class="fas fa-bolt"></i> 最新通信知识动态
+              <span class="update-time" v-if="lastUpdate">
+                (最后更新: {{ formatUpdateTime(lastUpdate) }})
+              </span>
             </h3>
             <div class="view-options">
               <button class="view-btn" :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
@@ -111,14 +122,31 @@
               <button class="view-btn" :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
                 <i class="fas fa-list"></i>
               </button>
+              <button class="btn btn-small refresh-btn" @click="refreshNews" :disabled="refreshing">
+                <i class="fas fa-sync-alt" :class="{ 'fa-spin': refreshing }"></i>
+              </button>
             </div>
           </div>
           
-          <div class="resources-container" :class="viewMode">
+          <!-- 加载状态 -->
+          <div v-if="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p>正在获取最新通信资讯...</p>
+          </div>
+          
+          <!-- 错误状态 -->
+          <div v-if="error" class="error-state">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>{{ error }}</p>
+            <button class="btn btn-secondary" @click="fetchCommunicationResources">重试</button>
+          </div>
+          
+          <div class="resources-container" :class="viewMode" v-if="!loading && !error">
             <div 
               class="knowledge-card" 
               v-for="resource in filteredResources" 
               :key="resource.id"
+              :class="getSourceClass(resource.source)"
             >
               <div class="knowledge-header">
                 <div class="knowledge-type">{{ resource.type }}</div>
@@ -134,7 +162,12 @@
                 </div>
               </div>
               <div class="knowledge-footer">
-                <span class="knowledge-source">{{ resource.source }}</span>
+                <span class="knowledge-source">
+                  <i class="fas fa-source" v-if="resource.source === '通信世界网'"></i>
+                  <i class="fas fa-huawei" v-else-if="resource.source === '华为技术'"></i>
+                  <i class="fas fa-newspaper" v-else></i>
+                  {{ resource.source }}
+                </span>
                 <div class="knowledge-actions">
                   <a :href="resource.url" target="_blank" class="knowledge-link">
                     阅读全文 <i class="fas fa-external-link-alt"></i>
@@ -515,7 +548,21 @@ export default {
       newTagInput: '',
       isDarkTheme: true,
       viewingImage: null,
-      hasMorePosts: true,
+      hasMorePosts: false,
+      
+      // 新增数据
+      refreshing: false,
+      lastUpdate: null,
+      
+      // API配置
+      apiConfig: {
+        baseUrl: 'http://localhost:8000', // 爬虫API地址
+        endpoints: {
+          news: '/api/news',
+          refresh: '/api/refresh',
+          health: '/api/health'
+        }
+      },
       
       categories: [
         { value: '', label: '全部', icon: 'fas fa-layer-group' },
@@ -532,112 +579,8 @@ export default {
       
       suggestedTags: ['5G-A', '毫米波', '波束赋形', '信道估计', '频谱感知', '网络切片', '通感算一体', '太赫兹', 'MIMO', 'OFDM'],
       
-      // 帖子数据
-      posts: [
-        {
-          id: 1,
-          author: '通信工程师',
-          authorInitials: 'CE',
-          authorColor: '#6366f1',
-          title: '5G网络切片技术在工业互联网中的应用实践',
-          content: '在最近的工业互联网项目中，我们成功部署了基于5G网络切片的专用网络。通过为不同业务类型（如控制信号、视频监控、数据采集）创建独立的网络切片，实现了服务质量保障和资源隔离。关键挑战在于切片资源的动态调度和跨域协同。',
-          category: '5G技术',
-          time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          tags: ['5G', '网络切片', '工业互联网', 'QoS'],
-          likes: 42,
-          liked: false,
-          bookmarked: true,
-          bookmarks: 15,
-          comments: 8,
-          views: 156,
-          showComments: false,
-          newComment: '',
-          commentsList: [
-            { id: 1, author: '网络架构师', authorInitials: 'NA', text: '请问你们是如何实现切片之间的资源隔离的？', time: '1小时前', likes: 3 },
-            { id: 2, author: '系统工程师', authorInitials: 'SE', text: '我们也遇到了类似的问题，可以分享一下你们的解决方案吗？', time: '45分钟前', likes: 1 }
-          ],
-          codeSnippet: `# 网络切片配置示例
-network_slices = {
-  'industrial_control': {
-    'bandwidth': '100Mbps',
-    'latency': '10ms',
-    'reliability': '99.999%',
-    'isolation': 'strict'
-  },
-  'video_surveillance': {
-    'bandwidth': '50Mbps',
-    'latency': '50ms',
-    'reliability': '99.9%',
-    'isolation': 'moderate'
-  }
-}`,
-          codeLanguage: 'python',
-          isNew: true
-        },
-        {
-          id: 2,
-          author: '研究员',
-          authorInitials: 'RS',
-          authorColor: '#10b981',
-          title: '6G通感算一体化技术研究进展与挑战',
-          content: '6G网络将实现通信、感知和计算的一体化融合。最新的研究表明，通过联合设计通信和感知信号，可以实现毫米级精度的环境感知。主要挑战包括信号处理算法的复杂度、硬件实现难度以及标准化问题。我们提出了一种基于深度学习的联合优化框架。',
-          category: '6G前沿',
-          time: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-          tags: ['6G', '通感算一体', '深度学习', '研究进展'],
-          likes: 78,
-          liked: true,
-          bookmarked: true,
-          bookmarks: 32,
-          comments: 15,
-          views: 289,
-          showComments: false,
-          newComment: '',
-          commentsList: [
-            { id: 1, author: '博士研究生', authorInitials: 'PD', text: '非常前沿的研究！请问感知精度能达到什么水平？', time: '2小时前', likes: 5 }
-          ],
-          images: [
-            'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80',
-            'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w-800&q=80'
-          ],
-          isNew: false
-        },
-        {
-          id: 3,
-          author: '算法工程师',
-          authorInitials: 'AE',
-          authorColor: '#8b5cf6',
-          title: '基于深度学习的MIMO信道估计算法优化',
-          content: '针对大规模MIMO系统中的信道估计问题，我们提出了一种基于Transformer的深度学习算法。相比传统的LS和MMSE算法，新算法在低信噪比条件下性能提升显著。关键创新在于多头注意力机制对信道相关性的建模能力。已在仿真环境中验证，准备进行实际部署测试。',
-          category: 'AI通信',
-          time: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          tags: ['MIMO', '信道估计', '深度学习', 'Transformer', '算法优化'],
-          likes: 56,
-          liked: false,
-          bookmarked: false,
-          bookmarks: 8,
-          comments: 12,
-          views: 187,
-          showComments: false,
-          newComment: '',
-          commentsList: [],
-          codeSnippet: `class ChannelEstimationTransformer(nn.Module):
-    def __init__(self, d_model=256, nhead=8, num_layers=6):
-        super().__init__()
-        self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model, nhead),
-            num_layers
-        )
-        self.position_encoding = PositionalEncoding(d_model)
-    
-    def forward(self, pilot_signals):
-        # 输入: [batch, seq_len, features]
-        x = self.position_encoding(pilot_signals)
-        channel_est = self.encoder(x)
-        return channel_est`,
-          codeLanguage: 'python',
-          isNew: false
-        }
-      ],
+      // 帖子数据 - 现在为空数组，用户需要自己发帖
+      posts: [],
       
       newPost: {
         title: '',
@@ -708,7 +651,12 @@ network_slices = {
     },
     
     featuredResources() {
-      return this.communicationResources.slice(0, 3);
+      // 从爬取的数据中选择3篇作为轮播
+      const resources = this.communicationResources;
+      return resources.slice(0, 3).map((resource, index) => ({
+        ...resource,
+        id: `featured_${index}_${resource.id}`
+      }));
     },
     
     unreadNotifications() {
@@ -728,6 +676,18 @@ network_slices = {
       if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}天前`;
       
       return date.toLocaleDateString('zh-CN');
+    },
+    
+    formatUpdateTime(isoString) {
+      if (!isoString) return '';
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return '刚刚';
+      if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}小时前`;
+      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     },
     
     performSearch() {
@@ -836,278 +796,381 @@ network_slices = {
         time: new Date().toISOString(),
         tags: ['快速分享'],
         likes: 0,
-        liked: false,
-        bookmarked: false,
-        bookmarks: 0,
-        comments: 0,
-        views: 0,
-        showComments: false,
-        newComment: '',
-        commentsList: [],
-        isNew: true
-      };
-      
-      this.posts.unshift(newPost);
-      this.resetQuickPost();
-      this.addNotification('fas fa-check-circle', '快速帖子发布成功！');
-    },
-    
-    cancelQuickPost() {
-      this.resetQuickPost();
-    },
-    
-    resetQuickPost() {
-      this.quickPostTitle = '';
-      this.quickPostContent = '';
-      this.showQuickPostOptions = false;
-    },
-    
-    resetNewPost() {
-      this.newPost = {
-        title: '',
-        content: '',
-        category: '技术问答',
-        tags: []
-      };
-      this.newTagInput = '';
-    },
-    
-    addTagToQuickPost(tag) {
-      if (!this.quickPostContent.includes(`#${tag}`)) {
-        this.quickPostContent += ` #${tag}`;
-      }
-    },
-    
-    addNewTag() {
-      if (this.newTagInput.trim() && !this.newPost.tags.includes(this.newTagInput.trim())) {
-        this.newPost.tags.push(this.newTagInput.trim());
-        this.newTagInput = '';
-      }
-    },
-    
-    addSuggestedTag(tag) {
-      if (!this.newPost.tags.includes(tag)) {
-        this.newPost.tags.push(tag);
-      }
-    },
-    
-    removeTag(tag) {
-      this.newPost.tags = this.newPost.tags.filter(t => t !== tag);
-    },
-    
-    filterByTag(tag) {
-      this.selectedCategory = '';
-      this.searchQuery = tag;
-    },
-    
-    addComment(post) {
-      if (!post.newComment.trim()) return;
-      
-      const newComment = {
-        id: Date.now(),
-        author: '评论用户',
-        authorInitials: 'CU',
-        text: post.newComment,
-        time: '刚刚',
-        likes: 0
-      };
-      
-      post.commentsList.push(newComment);
-      post.comments++;
-      post.newComment = '';
-      
-      this.addNotification('fas fa-comment', '你的帖子收到了新评论');
-    },
-    
-    likeComment(comment) {
-      comment.likes = (comment.likes || 0) + 1;
-    },
-    
-    replyToComment(comment, post) {
-      post.newComment = `回复 ${comment.author}: `;
-      if (!post.showComments) {
-        post.showComments = true;
-      }
-    },
-    
-    sharePost(post) {
-      const shareUrl = `${window.location.origin}/post/${post.id}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert('帖子链接已复制到剪贴板！');
-        this.addNotification('fas fa-share', '你分享了一篇帖子');
-      });
-    },
-    
-    shareResource(resource) {
-      navigator.clipboard.writeText(resource.url).then(() => {
-        alert('资源链接已复制到剪贴板！');
-      });
-    },
-    
-    saveResource(resource) {
-      alert(`已收藏：${resource.title}`);
-      this.addNotification('fas fa-bookmark', `你收藏了：${resource.title}`);
-    },
-    
-    copyCode(code) {
-      navigator.clipboard.writeText(code).then(() => {
-        alert('代码已复制到剪贴板！');
-      });
-    },
-    
-    viewImage(image) {
-      this.viewingImage = image;
-    },
-    
-    insertCodeBlock() {
-      this.newPost.content += '\n```python\n# 在这里输入你的代码\n```\n';
-    },
-    
-    insertLink() {
-      this.newPost.content += '\n[链接描述](链接地址)\n';
-    },
-    
-    triggerImageUpload() {
-      alert('图片上传功能（演示）');
-      // 实际项目中这里会触发文件上传
-    },
-    
-    loadMorePosts() {
-      // 模拟加载更多帖子
-      const newPosts = [
-        {
-          id: Date.now() + 1,
-          author: '网络优化师',
-          authorInitials: 'NO',
-          authorColor: '#3b82f6',
-          title: '毫米波通信中的波束管理优化实践',
-          content: '在5G毫米波部署中，波束管理是关键挑战。我们通过智能波束选择算法和机器学习预测，将波束训练时间减少了60%。分享具体的实现方法和测试结果。',
-          category: '5G技术',
-          time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          tags: ['毫米波', '波束管理', '5G优化', '机器学习'],
-          likes: 34,
           liked: false,
           bookmarked: false,
-          bookmarks: 7,
-          comments: 6,
-          views: 124,
+          bookmarks: 0,
+          comments: 0,
+          views: 0,
           showComments: false,
           newComment: '',
           commentsList: [],
-          isNew: false
+          isNew: true
+        };
+        
+        this.posts.unshift(newPost);
+        this.resetQuickPost();
+        this.addNotification('fas fa-check-circle', '快速帖子发布成功！');
+      },
+      
+      cancelQuickPost() {
+        this.resetQuickPost();
+      },
+      
+      resetQuickPost() {
+        this.quickPostTitle = '';
+        this.quickPostContent = '';
+        this.showQuickPostOptions = false;
+      },
+      
+      resetNewPost() {
+        this.newPost = {
+          title: '',
+          content: '',
+          category: '技术问答',
+          tags: []
+        };
+        this.newTagInput = '';
+      },
+      
+      addTagToQuickPost(tag) {
+        if (!this.quickPostContent.includes(`#${tag}`)) {
+          this.quickPostContent += ` #${tag}`;
         }
-      ];
+      },
       
-      this.posts.push(...newPosts);
-      this.hasMorePosts = this.posts.length < 10; // 模拟限制
-    },
-    
-    toggleTheme() {
-      this.isDarkTheme = !this.isDarkTheme;
-      document.body.classList.toggle('light-theme', !this.isDarkTheme);
-      localStorage.setItem('theme', this.isDarkTheme ? 'dark' : 'light');
-    },
-    
-    toggleNotifications() {
-      this.showNotifications = !this.showNotifications;
-    },
-    
-    markAllAsRead() {
-      this.notifications.forEach(notification => {
-        notification.read = true;
-      });
-    },
-    
-    addNotification(icon, message) {
-      this.notifications.unshift({
-        id: Date.now(),
-        icon,
-        message,
-        time: '刚刚',
-        read: false
-      });
-    },
-    
-    // 获取通信知识动态
-    async fetchCommunicationResources() {
-      this.loading = true;
+      addNewTag() {
+        if (this.newTagInput.trim() && !this.newPost.tags.includes(this.newTagInput.trim())) {
+          this.newPost.tags.push(this.newTagInput.trim());
+          this.newTagInput = '';
+        }
+      },
       
-      try {
-        // 模拟API调用
+      addSuggestedTag(tag) {
+        if (!this.newPost.tags.includes(tag)) {
+          this.newPost.tags.push(tag);
+        }
+      },
+      
+      removeTag(tag) {
+        this.newPost.tags = this.newPost.tags.filter(t => t !== tag);
+      },
+      
+      filterByTag(tag) {
+        this.selectedCategory = '';
+        this.searchQuery = tag;
+      },
+      
+      addComment(post) {
+        if (!post.newComment.trim()) return;
+        
+        const newComment = {
+          id: Date.now(),
+          author: '评论用户',
+          authorInitials: 'CU',
+          text: post.newComment,
+          time: '刚刚',
+          likes: 0
+        };
+        
+        post.commentsList.push(newComment);
+        post.comments++;
+        post.newComment = '';
+        
+        this.addNotification('fas fa-comment', '你的帖子收到了新评论');
+      },
+      
+      likeComment(comment) {
+        comment.likes = (comment.likes || 0) + 1;
+      },
+      
+      replyToComment(comment, post) {
+        post.newComment = `回复 ${comment.author}: `;
+        if (!post.showComments) {
+          post.showComments = true;
+        }
+      },
+      
+      sharePost(post) {
+        const shareUrl = `${window.location.origin}/post/${post.id}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          alert('帖子链接已复制到剪贴板！');
+          this.addNotification('fas fa-share', '你分享了一篇帖子');
+        });
+      },
+      
+      shareResource(resource) {
+        navigator.clipboard.writeText(resource.url).then(() => {
+          alert('资源链接已复制到剪贴板！');
+        });
+      },
+      
+      saveResource(resource) {
+        alert(`已收藏：${resource.title}`);
+        this.addNotification('fas fa-bookmark', `你收藏了：${resource.title}`);
+      },
+      
+      copyCode(code) {
+        navigator.clipboard.writeText(code).then(() => {
+          alert('代码已复制到剪贴板！');
+        });
+      },
+      
+      viewImage(image) {
+        this.viewingImage = image;
+      },
+      
+      insertCodeBlock() {
+        this.newPost.content += '\n```python\n# 在这里输入你的代码\n```\n';
+      },
+      
+      insertLink() {
+        this.newPost.content += '\n[链接描述](链接地址)\n';
+      },
+      
+      triggerImageUpload() {
+        alert('图片上传功能（演示）');
+      },
+      
+      loadMorePosts() {
+        // 如果后续需要实现分页加载，可以在这里添加逻辑
+        this.hasMorePosts = false;
+      },
+      
+      toggleTheme() {
+        this.isDarkTheme = !this.isDarkTheme;
+        document.body.classList.toggle('light-theme', !this.isDarkTheme);
+        localStorage.setItem('theme', this.isDarkTheme ? 'dark' : 'light');
+      },
+      
+      toggleNotifications() {
+        this.showNotifications = !this.showNotifications;
+      },
+      
+      markAllAsRead() {
+        this.notifications.forEach(notification => {
+          notification.read = true;
+        });
+      },
+      
+      addNotification(icon, message) {
+        this.notifications.unshift({
+          id: Date.now(),
+          icon,
+          message,
+          time: '刚刚',
+          read: false
+        });
+      },
+      
+      // 新增方法：获取通信知识动态
+      async fetchCommunicationResources() {
+        this.loading = true;
+        this.error = '';
+        
+        try {
+          const response = await fetch(`${this.apiConfig.baseUrl}${this.apiConfig.endpoints.news}`);
+          
+          if (!response.ok) {
+            throw new Error(`API请求失败: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            this.communicationResources = data.data.map(article => ({
+              id: `news_${article.id}`,
+              title: article.title,
+              description: article.description,
+              content: article.content || article.description,
+              type: article.type,
+              pubDate: article.pubDate,
+              source: article.source,
+              url: article.url,
+              tags: article.tags || []
+            }));
+            this.lastUpdate = data.last_update;
+            
+            console.log(`从API获取 ${this.communicationResources.length} 篇通信资讯`);
+          } else {
+            throw new Error('API返回数据格式错误');
+          }
+        } catch (error) {
+          console.error('获取通信知识动态失败:', error);
+          this.error = '获取动态失败，请检查API服务是否运行';
+          
+          // 使用模拟数据作为后备
+          await this.getSimulatedResources();
+        } finally {
+          this.loading = false;
+        }
+      },
+      
+      // 模拟数据作为后备
+      async getSimulatedResources() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // 模拟数据
+        const currentTime = new Date();
         this.communicationResources = [
           {
-            id: 1,
-            title: '华为发布5G-A通感算一体白皮书',
-            description: '华为发布5G-A通感算一体化技术白皮书，提出AI原生网络架构，支持通信、感知、计算一体化服务',
+            id: 'sim_1',
+            title: '5G-A技术正式商用，开启万物智联新时代',
+            description: '中国三大运营商宣布5G-A网络正式商用，下行峰值速率突破10Gbps，为工业互联网、车联网等应用提供更强大支撑',
+            content: '近日，中国移动、中国电信、中国联通联合宣布5G-Advanced网络正式商用。新一代5G-A技术在下行峰值速率、连接密度、端到端时延等关键指标上实现全面突破。',
             type: '5G技术',
-            pubDate: new Date().toISOString(),
-            source: '华为官方',
-            url: 'https://www.huawei.com',
-            tags: ['5G-A', '通感算一体', '白皮书']
+            pubDate: new Date(currentTime.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+            source: '行业快讯',
+            url: '#',
+            tags: ['5G-A', '商用', '物联网', '工业互联网']
           },
           {
-            id: 2,
-            title: '6G太赫兹通信技术取得重要突破',
-            description: '国内科研团队在太赫兹通信领域实现100Gbps单载波传输速率，为6G空天地一体化网络提供技术支撑',
+            id: 'sim_2',
+            title: '6G太赫兹通信实现百米级实时传输',
+            description: '国内科研团队在太赫兹频段实现100Gbps实时无线传输，为6G空天地一体化网络奠定基础',
+            content: '清华大学与华为联合实验室在6G关键技术研究中取得重要突破，在300GHz频段实现100Gbps实时无线传输，传输距离达到100米。',
             type: '6G前沿',
-            pubDate: new Date(Date.now() - 86400000).toISOString(),
-            source: '中科院',
-            url: 'https://www.cas.cn',
-            tags: ['6G', '太赫兹', '通信突破']
+            pubDate: new Date(currentTime.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+            source: '科研动态',
+            url: '#',
+            tags: ['6G', '太赫兹', '科研突破', '无线传输']
           },
           {
-            id: 3,
-            title: '基于深度学习的无线信号识别技术',
-            description: '最新研究提出基于深度学习的无线信号自动识别算法，在复杂电磁环境中识别准确率达到95%',
+            id: 'sim_3',
+            title: 'AI原生通信网络白皮书发布',
+            description: '国际标准组织发布AI原生通信网络架构白皮书，提出将AI能力深度嵌入通信网络各层',
+            content: '3GPP、ETSI等国际标准组织联合发布AI原生通信网络架构白皮书，提出将AI能力深度嵌入通信网络各层，实现网络自优化、自修复、自演进。',
             type: 'AI通信',
-            pubDate: new Date(Date.now() - 172800000).toISOString(),
-            source: 'IEEE期刊',
-            url: 'https://www.ieee.org',
-            tags: ['深度学习', '信号识别', 'AI算法']
+            pubDate: new Date(currentTime.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+            source: '标准动态',
+            url: '#',
+            tags: ['AI', '网络架构', '3GPP', '智能化']
           },
           {
-            id: 4,
-            title: 'Open RAN在5G网络中的应用实践',
-            description: '多家运营商联合发布Open RAN部署白皮书，分享在现网中部署Open RAN的经验和挑战',
+            id: 'sim_4',
+            title: 'Open RAN全球部署突破50万站点',
+            description: 'O-RAN联盟公布Open RAN全球部署最新数据，开源解耦的网络架构正改变传统电信设备市场格局',
+            content: '根据O-RAN联盟最新报告，全球Open RAN部署站点已突破50万个，特别是在日本、美国、英国等市场取得显著进展。',
             type: '无线通信',
-            pubDate: new Date(Date.now() - 259200000).toISOString(),
-            source: 'GSMA',
-            url: 'https://www.gsma.com',
-            tags: ['Open RAN', '5G网络', '开源']
+            pubDate: new Date(currentTime.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            source: '市场报告',
+            url: '#',
+            tags: ['Open RAN', 'O-RAN', '开源', '网络架构']
+          },
+          {
+            id: 'sim_5',
+            title: '卫星互联网与地面5G融合组网测试成功',
+            description: '国内首次实现低轨卫星与地面5G网络深度融合组网，为全球无缝覆盖提供技术验证',
+            content: '中国航天科工与中国联通联合完成低轨卫星与地面5G网络融合组网测试，实现了卫星与地面基站的无缝切换和协同传输。',
+            type: '无线通信',
+            pubDate: new Date(currentTime.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            source: '技术测试',
+            url: '#',
+            tags: ['卫星互联网', '5G', '融合组网', '低轨卫星']
+          },
+          {
+            id: 'sim_6',
+            title: '量子通信安全传输距离创新纪录',
+            description: '中国科研团队实现509公里量子密钥分发，创下光纤量子通信最远距离纪录',
+            content: '中国科学技术大学团队在量子通信领域取得重大突破，实现了509公里光纤量子密钥分发，刷新了该领域的世界纪录。',
+            type: '前沿技术',
+            pubDate: new Date(currentTime.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+            source: '科研突破',
+            url: '#',
+            tags: ['量子通信', '网络安全', '光纤传输', '科研纪录']
           }
         ];
+        this.lastUpdate = new Date().toISOString();
+      },
+      
+      // 刷新新闻
+      async refreshNews() {
+        if (this.refreshing) return;
         
-      } catch (error) {
-        console.error('获取通信知识动态失败:', error);
-        this.error = '获取动态失败，请稍后重试';
-      } finally {
-        this.loading = false;
+        this.refreshing = true;
+        try {
+          const response = await fetch(
+            `${this.apiConfig.baseUrl}${this.apiConfig.endpoints.news}?refresh=true`,
+            {
+              method: 'GET'
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              await this.fetchCommunicationResources();
+              this.addNotification('fas fa-sync-alt', '通信资讯已更新');
+            }
+          }
+        } catch (error) {
+          console.error('刷新失败:', error);
+          this.addNotification('fas fa-exclamation-triangle', '刷新失败，请检查网络');
+        } finally {
+          this.refreshing = false;
+        }
+      },
+      
+      // 根据来源添加样式类
+      getSourceClass(source) {
+        const sourceClasses = {
+          '通信世界网': 'source-cww',
+          '华为技术': 'source-huawei',
+          '行业快讯': 'source-industry',
+          '科研动态': 'source-research',
+          '标准动态': 'source-standard',
+          '市场报告': 'source-market',
+          '技术测试': 'source-test',
+          '科研突破': 'source-breakthrough',
+          '前沿技术': 'source-frontier'
+        };
+        return sourceClasses[source] || '';
+      },
+      
+      // 检查API健康状态
+      async checkApiHealth() {
+        try {
+          const response = await fetch(`${this.apiConfig.baseUrl}${this.apiConfig.endpoints.health}`);
+          return response.ok;
+        } catch (error) {
+          return false;
+        }
       }
+    },
+    
+    mounted() {
+      // 初始化主题
+      const savedTheme = localStorage.getItem('theme') || 'dark';
+      this.isDarkTheme = savedTheme === 'dark';
+      document.body.classList.toggle('light-theme', !this.isDarkTheme);
+      
+      // 检查并连接API
+      this.checkApiHealth().then(healthy => {
+        if (healthy) {
+          console.log('API服务连接正常');
+          this.fetchCommunicationResources();
+        } else {
+          console.warn('API服务未启动，使用模拟数据');
+          this.getSimulatedResources();
+          this.error = '注意：API服务未连接，显示模拟数据。请确保爬虫服务正在运行。';
+        }
+      });
+      
+      // 轮播自动播放
+      setInterval(() => {
+        if (this.featuredResources.length > 0) {
+          this.currentSlide = (this.currentSlide + 1) % this.featuredResources.length;
+        }
+      }, 5000);
+      
+      // 每30分钟自动刷新一次
+      setInterval(() => {
+        if (!this.loading && !this.refreshing) {
+          this.fetchCommunicationResources();
+        }
+      }, 30 * 60 * 1000);
+      
+      console.log('通信技术社区已初始化');
     }
-  },
-  
-  mounted() {
-    // 初始化主题
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    this.isDarkTheme = savedTheme === 'dark';
-    document.body.classList.toggle('light-theme', !this.isDarkTheme);
-    
-    // 获取通信知识动态
-    this.fetchCommunicationResources();
-    
-    // 轮播自动播放
-    setInterval(() => {
-      if (this.featuredResources.length > 0) {
-        this.currentSlide = (this.currentSlide + 1) % this.featuredResources.length;
-      }
-    }, 5000);
-    
-    console.log('通信技术社区已初始化');
-  }
-};
+  };
 </script>
 
 <style scoped>
@@ -1258,6 +1321,16 @@ body.light-theme .header-search input {
   font-weight: 500;
 }
 
+.refresh-btn {
+  padding: 8px 15px;
+  font-size: 13px;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* 社区导航 */
 .community-nav {
   display: flex;
@@ -1396,6 +1469,25 @@ body.light-theme .category-tab {
   font-size: 15px;
 }
 
+.slide-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.slide-source {
+  background: rgba(168, 85, 247, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.slide-time {
+  font-size: 13px;
+}
+
 .slide-actions {
   display: flex;
   gap: 15px;
@@ -1451,6 +1543,13 @@ body.light-theme .category-tab {
   font-size: 22px;
 }
 
+.update-time {
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: normal;
+  margin-left: 10px;
+}
+
 .view-options {
   display: flex;
   gap: 8px;
@@ -1477,6 +1576,40 @@ body.light-theme .category-tab {
 .view-btn.active {
   background: #a855f7;
   color: white;
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 40px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(168, 85, 247, 0.3);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  margin: 0 auto 15px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state i {
+  font-size: 40px;
+  color: #ef4444;
+  margin-bottom: 15px;
+}
+
+.error-state p {
+  color: #ef4444;
+  margin-bottom: 15px;
 }
 
 .resources-container {
@@ -1509,6 +1642,43 @@ body.light-theme .knowledge-card {
   border-color: #a855f7;
   transform: translateY(-4px);
   box-shadow: 0 10px 25px rgba(168, 85, 247, 0.2);
+}
+
+/* 来源样式 */
+.source-cww {
+  border-left: 4px solid #3b82f6;
+}
+
+.source-huawei {
+  border-left: 4px solid #ef4444;
+}
+
+.source-industry {
+  border-left: 4px solid #10b981;
+}
+
+.source-research {
+  border-left: 4px solid #8b5cf6;
+}
+
+.source-standard {
+  border-left: 4px solid #f59e0b;
+}
+
+.source-market {
+  border-left: 4px solid #ec4899;
+}
+
+.source-test {
+  border-left: 4px solid #06b6d4;
+}
+
+.source-breakthrough {
+  border-left: 4px solid #8b5cf6;
+}
+
+.source-frontier {
+  border-left: 4px solid #84cc16;
 }
 
 .knowledge-header {
@@ -1577,6 +1747,9 @@ body.light-theme .knowledge-body h4 {
 .knowledge-source {
   font-size: 12px;
   color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .knowledge-actions {
@@ -2696,6 +2869,16 @@ body.light-theme .tags-editor {
   
   .category-selection {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .header-actions .refresh-btn {
+    display: none;
+  }
+  
+  .update-time {
+    display: block;
+    margin-left: 0;
+    margin-top: 5px;
   }
 }
 
